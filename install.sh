@@ -75,7 +75,19 @@ if ! step_done "resolved_stub"; then
 fi
 success "Port 53 free"
 
-# ── 3. System packages ────────────────────────────────────────────────────────
+# ── 3. ondrej/php PPA (required for PHP 8.2 on Ubuntu 24.04) ─────────────────
+step "Adding ondrej/php PPA"
+if ! step_done "php_ppa"; then
+  export DEBIAN_FRONTEND=noninteractive
+  # Install prereqs for add-apt-repository
+  apt-get install -y -qq ca-certificates gnupg software-properties-common
+  add-apt-repository -y ppa:ondrej/php
+  apt-get update -qq
+  mark_done "php_ppa"
+fi
+success "ondrej/php PPA added"
+
+# ── 4. System packages ────────────────────────────────────────────────────────
 step "Installing system packages"
 if ! step_done "packages"; then
   export DEBIAN_FRONTEND=noninteractive
