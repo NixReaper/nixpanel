@@ -1,0 +1,7 @@
+# Force LF line endings for scripts on all platforms
+*.sh    text eol=lf
+*.env*  text eol=lf
+*.sql   text eol=lf
+*.rs    text eol=lf
+*.toml  text eol=lf
+*.md    text eol=lf
