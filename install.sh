@@ -6,6 +6,20 @@
 # ──────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
+# ── Self-update ───────────────────────────────────────────────────────────────
+# Always re-exec from the latest version on GitHub so stale local copies
+# never silently run outdated logic.
+SELF_URL="https://raw.githubusercontent.com/NixReaper/nixpanel/main/install.sh"
+if [[ -z "${NIXPANEL_SELF_UPDATED:-}" ]]; then
+  echo "Fetching latest installer from GitHub…"
+  LATEST_SCRIPT=$(curl -fsSL "$SELF_URL") \
+    || { echo "[WARN] Could not reach GitHub — running local copy"; LATEST_SCRIPT=""; }
+  if [[ -n "$LATEST_SCRIPT" ]]; then
+    export NIXPANEL_SELF_UPDATED=1
+    exec bash <(printf '%s' "$LATEST_SCRIPT") "$@"
+  fi
+fi
+
 # ── Colours ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'
 YELLOW='\033[1;33m'; BOLD='\033[1m'; RESET='\033[0m'
@@ -75,22 +89,22 @@ if ! step_done "resolved_stub"; then
 fi
 success "Port 53 free"
 
-# ── 3. ondrej/php PPA (required for PHP 8.2 on Ubuntu 24.04) ─────────────────
-step "Adding ondrej/php PPA"
-if ! step_done "php_ppa"; then
-  export DEBIAN_FRONTEND=noninteractive
-  # Install prereqs for add-apt-repository
-  apt-get install -y -qq ca-certificates gnupg software-properties-common
-  add-apt-repository -y ppa:ondrej/php
-  apt-get update -qq
-  mark_done "php_ppa"
-fi
-success "ondrej/php PPA added"
-
-# ── 4. System packages ────────────────────────────────────────────────────────
+# ── 3. System packages (including ondrej/php PPA for PHP 8.2 on Ubuntu 24.04) ─
 step "Installing system packages"
 if ! step_done "packages"; then
   export DEBIAN_FRONTEND=noninteractive
+
+  # Ensure PPA tooling is present, then add ondrej/php for PHP 8.2
+  apt-get install -y -qq ca-certificates gnupg software-properties-common
+  if ! grep -rq "ondrej/php" /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null; then
+    info "Adding ondrej/php PPA (required for PHP 8.2 on Ubuntu 24.04)…"
+    add-apt-repository -y ppa:ondrej/php
+    apt-get update -qq
+    success "ondrej/php PPA added"
+  else
+    info "ondrej/php PPA already present"
+  fi
+
   apt-get install -y -qq \
     build-essential pkg-config libssl-dev libmariadb-dev curl wget git unzip \
     ca-certificates gnupg software-properties-common \
