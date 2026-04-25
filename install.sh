@@ -264,12 +264,16 @@ if ! step_done "build_panel"; then
     mkdir -p "$BIN_DIR"
     for section_bin in target/release/nixpanel-*; do
       [[ -f "$section_bin" ]] || continue
+      # Skip debug/metadata files produced by UPX (.d files etc.)
+      [[ "$section_bin" == *.* ]] && continue
       bin_name=$(basename "$section_bin")
       cp "$section_bin" "$BIN_DIR/$bin_name"
       chmod 755 "$BIN_DIR/$bin_name"
       command -v upx &>/dev/null && upx --best --quiet "$BIN_DIR/$bin_name" 2>/dev/null || true
       success "Section binary installed: $bin_name"
     done
+    # Remove any UPX metadata files
+    rm -f "$BIN_DIR"/*.d
 
     mark_done "build_panel"
     success "Panel binaries built and compressed"
