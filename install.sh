@@ -182,9 +182,11 @@ if ! step_done "source"; then
     git -C "$SRC_DIR" fetch --tags --quiet
     git -C "$SRC_DIR" checkout "$LATEST_TAG" --quiet
   else
+    # Try with explicit branch first, then fallback to explicit 'main' branch
     git clone --depth 1 --branch "$LATEST_TAG" \
       "https://github.com/${GITHUB_REPO}.git" "$SRC_DIR" 2>/dev/null \
-    || git clone --depth 1 "https://github.com/${GITHUB_REPO}.git" "$SRC_DIR"
+    || git clone --depth 1 --branch main \
+      "https://github.com/${GITHUB_REPO}.git" "$SRC_DIR"
   fi
   mark_done "source"
 fi
