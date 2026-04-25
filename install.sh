@@ -190,19 +190,48 @@ if ! step_done "source"; then
 fi
 success "Source ready"
 
-# ── 8. Build panel binary ─────────────────────────────────────────────────────
+# ── 8. Build panel UIs (React apps) ───────────────────────────────────────────
+step "Building NixServer & NixClient UIs"
+if ! step_done "build_uis"; then
+  cd "$SRC_DIR"
+
+  # Build NixServer (WHM admin panel)
+  if [[ -f "nixserver/package.json" ]]; then
+    info "Building NixServer…"
+    cd "$SRC_DIR/nixserver"
+    npm install --legacy-peer-deps --quiet 2>/dev/null || true
+    npm run build --silent 2>/dev/null
+    mkdir -p "$INSTALL_DIR/nixserver/dist"
+    cp -r dist/* "$INSTALL_DIR/nixserver/dist/" 2>/dev/null || true
+    success "NixServer built"
+  fi
+
+  # Build NixClient (cPanel user panel)
+  if [[ -f "nixclient/package.json" ]]; then
+    info "Building NixClient…"
+    cd "$SRC_DIR/nixclient"
+    npm install --legacy-peer-deps --quiet 2>/dev/null || true
+    npm run build --silent 2>/dev/null
+    mkdir -p "$INSTALL_DIR/nixclient/dist"
+    cp -r dist/* "$INSTALL_DIR/nixclient/dist/" 2>/dev/null || true
+    success "NixClient built"
+  fi
+
+  mark_done "build_uis"
+fi
+
+# ── 9. Build panel binary ─────────────────────────────────────────────────────
 step "Building nixpanel (Rust)"
 if ! step_done "build_panel"; then
   if [[ -f "$SRC_DIR/Cargo.toml" ]]; then
     cd "$SRC_DIR"
     $CARGO build --release --quiet
-    # Copy any produced binaries
     [[ -f "target/release/nixpanel" ]] && \
       cp target/release/nixpanel "$BIN_DIR/nixpanel" && chmod 755 "$BIN_DIR/nixpanel"
     mark_done "build_panel"
     success "Panel binary built"
   else
-    warn "Panel Rust source not yet present in repo — skipping build"
+    warn "Panel Rust backend not yet present in repo — skipping build"
     warn "This is expected during early development. Re-run installer when source is ready."
   fi
 fi
