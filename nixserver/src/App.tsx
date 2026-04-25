@@ -69,14 +69,14 @@ export default function App() {
         <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-8">
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1.5">Email</label>
+              <label className="block text-sm text-gray-400 mb-1.5">Username</label>
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2.5 text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors"
-                placeholder="admin@example.com"
+                placeholder="admin"
               />
             </div>
 
