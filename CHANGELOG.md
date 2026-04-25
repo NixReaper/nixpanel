@@ -32,24 +32,13 @@ Versions follow [Semantic Versioning](https://semver.org/).
   - Configures Apache reverse proxy on ports 2083 (NixClient) and 2087 (NixServer)
   - Prompts for admin credentials, hostname, and license key during install
   - License activation against `https://license.nixpanel.io` with grace period fallback
-- **Licensing server** (`nixpanel-licensing`) — central SaaS licensing
-  - Rust · Axum · SQLx · MariaDB
-  - RSA-4096 signed JWT license tokens
-  - Server IP binding with conflict detection
+- **Licensing** — license key validated against `https://license.nixpanel.io` during install
   - Plans: Free, Solo ($9.99/mo), Host ($29.99/mo), Agency ($79.99/mo)
-  - Admin API with Argon2id authentication
-  - Validation logging and grace period enforcement
-  - Repo: [NixReaper/nixpanel-licensing](https://github.com/NixReaper/nixpanel-licensing)
-- **Website API** (`nixpanel-website-api`) — nixpanel.io customer portal backend
-  - Rust · Axum · SQLx · MariaDB
-  - Stripe subscriptions (checkout sessions, billing portal, webhooks)
-  - Customer auth: register, login, email verification, password reset (Argon2id)
-  - License management: view active license, IP change requests
-  - SMTP transactional email via Lettre
-  - Repo: [NixReaper/nixpanel-website](https://github.com/NixReaper/nixpanel-website)
-- **Website frontend** — nixpanel.io marketing & customer portal
-  - React 18 · TypeScript · Tailwind CSS · Vite
-  - Pages: Home, Pricing (monthly/annual toggle), Login, Register, Dashboard, Email Verify, Password Reset
+  - Server IP binding with grace period fallback
+- **nixpanel.io** — customer portal at [nixpanel.io](https://nixpanel.io)
+  - Stripe subscriptions with monthly and annual billing
+  - Customer auth: register, login, email verification, password reset
+  - License management and IP change requests
 
 ### Infrastructure
 - `.gitattributes` enforcing LF line endings for `.sh`, `.rs`, `.toml`, `.sql`, `.md` files
