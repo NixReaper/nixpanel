@@ -96,6 +96,15 @@ if ! step_done "packages"; then
   # Prereqs for add-apt-repository
   apt-get install -y -qq ca-certificates gnupg software-properties-common
 
+  # Node.js 20 LTS via NodeSource (required for UI builds)
+  if ! command -v node &>/dev/null; then
+    info "Adding NodeSource Node.js 20 LTS repository…"
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - 2>/dev/null
+    success "NodeSource repository added"
+  else
+    info "Node.js $(node --version) already present"
+  fi
+
   # ondrej/php PPA is required for PHP 8.2 on Ubuntu 24.04
   if ! grep -rq "ondrej/php" /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null; then
     info "Adding ondrej/php PPA (required for PHP 8.2 on Ubuntu 24.04)…"
@@ -108,7 +117,7 @@ if ! step_done "packages"; then
 
   apt-get install -y -qq \
     build-essential pkg-config libssl-dev libmariadb-dev curl wget git unzip \
-    ca-certificates gnupg software-properties-common \
+    ca-certificates gnupg software-properties-common nodejs \
     apache2 \
     php8.3 php8.3-fpm php8.3-cli php8.3-mysql php8.3-curl php8.3-mbstring \
     php8.3-xml php8.3-zip php8.3-gd php8.3-intl php8.3-bcmath \
