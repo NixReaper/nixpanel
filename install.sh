@@ -178,16 +178,11 @@ if ! step_done "source"; then
   [[ -z "$LATEST_TAG" ]] && LATEST_TAG="main"
   info "Fetching tag: $LATEST_TAG"
 
-  if [[ -d "$SRC_DIR/.git" ]]; then
-    git -C "$SRC_DIR" fetch --tags --quiet
-    git -C "$SRC_DIR" checkout "$LATEST_TAG" --quiet
-  else
-    # Try with explicit branch first, then fallback to explicit 'main' branch
-    git clone --depth 1 --branch "$LATEST_TAG" \
-      "https://github.com/${GITHUB_REPO}.git" "$SRC_DIR" 2>/dev/null \
-    || git clone --depth 1 --branch main \
-      "https://github.com/${GITHUB_REPO}.git" "$SRC_DIR"
-  fi
+  # Always do a clean clone when re-running this step — avoids stale .git configs
+  # (e.g. old clones that tracked 'master' before the branch was renamed to 'main')
+  rm -rf "$SRC_DIR"
+  git clone --depth 1 --branch "$LATEST_TAG" \
+    "https://github.com/${GITHUB_REPO}.git" "$SRC_DIR"
   mark_done "source"
 fi
 success "Source ready"
