@@ -244,11 +244,35 @@ step "Building nixpanel (Rust)"
 if ! step_done "build_panel"; then
   if [[ -f "$SRC_DIR/Cargo.toml" ]]; then
     cd "$SRC_DIR"
-    $CARGO build --release --quiet
-    [[ -f "target/release/nixpanel" ]] && \
-      cp target/release/nixpanel "$BIN_DIR/nixpanel" && chmod 755 "$BIN_DIR/nixpanel"
+    info "Compiling nixpanel workspace (this may take a few minutes on first build)…"
+    $CARGO build --release
+
+    # Install UPX if available for binary compression
+    if ! command -v upx &>/dev/null; then
+      apt-get install -y -qq upx-ucl 2>/dev/null || true
+    fi
+
+    # Main API binary
+    if [[ -f "target/release/nixpanel" ]]; then
+      cp target/release/nixpanel "$BIN_DIR/nixpanel"
+      chmod 755 "$BIN_DIR/nixpanel"
+      command -v upx &>/dev/null && upx --best --quiet "$BIN_DIR/nixpanel" 2>/dev/null || true
+      success "nixpanel binary installed"
+    fi
+
+    # Section binaries — each section is a separate compressed executable
+    mkdir -p "$BIN_DIR"
+    for section_bin in target/release/nixpanel-*; do
+      [[ -f "$section_bin" ]] || continue
+      bin_name=$(basename "$section_bin")
+      cp "$section_bin" "$BIN_DIR/$bin_name"
+      chmod 755 "$BIN_DIR/$bin_name"
+      command -v upx &>/dev/null && upx --best --quiet "$BIN_DIR/$bin_name" 2>/dev/null || true
+      success "Section binary installed: $bin_name"
+    done
+
     mark_done "build_panel"
-    success "Panel binary built"
+    success "Panel binaries built and compressed"
   else
     warn "Panel Rust backend not yet present in repo — skipping build"
     warn "This is expected during early development. Re-run installer when source is ready."
