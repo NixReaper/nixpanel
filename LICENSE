@@ -1,22 +1,50 @@
-NixPanel Source Available License v1.0
+NixPanel Source-Available License
+Version 1.0 — April 2025
 
-Copyright (c) 2026 NixReaper
+Copyright (c) 2025 NixPanel. All rights reserved.
 
-Permission is hereby granted to use, copy, and run this software for personal
-or internal business use, subject to the following conditions:
+GRANT OF RIGHTS
 
-1. REDISTRIBUTION PROHIBITED — You may not redistribute, resell, sublicense,
-   or offer this software (or any derivative) as a service without explicit
-   written permission from the copyright holder.
+Subject to the terms of this License, NixPanel grants you a non-exclusive,
+non-transferable, limited right to:
 
-2. MODIFICATION — You may modify the software for your own use. Modified
-   versions may not be distributed publicly or commercially.
+  1. View and inspect the source code for personal evaluation and security
+     review purposes.
 
-3. ATTRIBUTION — Any permitted use must retain this copyright notice and
-   license in all copies or substantial portions of the software.
+  2. Install and operate the software on servers that you own or control,
+     provided you hold a valid NixPanel license subscription issued by NixPanel
+     at https://nixpanel.io.
 
-4. NO WARRANTY — The software is provided "as is", without warranty of any
-   kind. The copyright holder is not liable for any damages arising from use.
+RESTRICTIONS
 
-For commercial licensing, white-labelling, or reseller arrangements contact:
+You may NOT:
+
+  a. Distribute, sublicense, sell, or resell the software or any derivative
+     work, in source or binary form, to any third party.
+
+  b. Offer the software as a managed service, hosting panel product, or
+     software-as-a-service to third parties.
+
+  c. Remove or alter any copyright, trademark, or attribution notices.
+
+  d. Use the NixPanel name, logo, or branding in any product or service without
+     prior written permission from NixPanel.
+
+NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL
+NIXPANEL BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM
+YOUR USE OF THE SOFTWARE.
+
+TERMINATION
+
+This License is automatically terminated if you breach any of its terms. Upon
+termination you must destroy all copies of the software in your possession.
+
+CONTACT
+
+For commercial licensing, white-labelling, or reseller enquiries:
+  legal@nixpanel.io
   https://nixpanel.io
