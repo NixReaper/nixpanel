@@ -19,36 +19,30 @@ pub struct DashboardResponse {
 }
 
 pub async fn get_dashboard(
-    claims: Claims,
+    _claims: Claims,
     State(state): State<AppState>,
 ) -> Result<Json<DashboardResponse>, AppError> {
-    // DB counts
-    let accounts       = sqlx::query_scalar!("SELECT COUNT(*) FROM accounts")
-        .fetch_one(&state.db).await?.unwrap_or(0);
-    let domains        = sqlx::query_scalar!("SELECT COUNT(*) FROM domains")
-        .fetch_one(&state.db).await?.unwrap_or(0);
-    let databases      = sqlx::query_scalar!("SELECT COUNT(*) FROM account_databases")
-        .fetch_one(&state.db).await?.unwrap_or(0);
-    let email_accounts = sqlx::query_scalar!("SELECT COUNT(*) FROM email_accounts")
-        .fetch_one(&state.db).await?.unwrap_or(0);
+    // Use non-macro query() — tables may not exist at compile time
+    let accounts: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM accounts")
+        .fetch_one(&state.db).await.unwrap_or(0);
+    let domains: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM domains")
+        .fetch_one(&state.db).await.unwrap_or(0);
+    let databases: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM account_databases")
+        .fetch_one(&state.db).await.unwrap_or(0);
+    let email_accounts: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM email_accounts")
+        .fetch_one(&state.db).await.unwrap_or(0);
 
-    // Section binaries
     let bin_dir = &state.config.bin_dir;
 
-    let sysinfo_resp = section::call(bin_dir, "nixpanel-sysinfo", "stats", serde_json::Value::Null)
+    let sysinfo = section::call(bin_dir, "nixpanel-sysinfo", "stats", serde_json::Value::Null)
         .unwrap_or_else(|_| nixpanel_common::SectionResponse::err("sysinfo unavailable"));
 
-    let versions_resp = section::call(bin_dir, "nixpanel-sysinfo", "versions", serde_json::Value::Null)
+    let versions = section::call(bin_dir, "nixpanel-sysinfo", "versions", serde_json::Value::Null)
         .unwrap_or_else(|_| nixpanel_common::SectionResponse::err("versions unavailable"));
 
     Ok(Json(DashboardResponse {
-        stats: DashboardStats {
-            accounts,
-            domains,
-            databases,
-            email_accounts,
-        },
-        sysinfo:  sysinfo_resp.data.unwrap_or(serde_json::Value::Null),
-        versions: versions_resp.data.unwrap_or(serde_json::Value::Null),
+        stats: DashboardStats { accounts, domains, databases, email_accounts },
+        sysinfo:  sysinfo.data.unwrap_or(serde_json::Value::Null),
+        versions: versions.data.unwrap_or(serde_json::Value::Null),
     }))
 }

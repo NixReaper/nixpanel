@@ -129,7 +129,6 @@ fn get_ram() -> (u64, u64) {
 
 fn get_disk() -> (u64, u64) {
     // Returns (used_gb, total_gb) for /
-    use std::os::unix::fs::MetadataExt;
     let stat = nix_statvfs("/");
     stat.unwrap_or((0, 0))
 }

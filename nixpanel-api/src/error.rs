@@ -23,10 +23,10 @@ pub enum AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
-            AppError::Unauthorized       => (StatusCode::UNAUTHORIZED, self.to_string()),
-            AppError::NotFound           => (StatusCode::NOT_FOUND, self.to_string()),
-            AppError::BadRequest(msg)    => (StatusCode::BAD_REQUEST, msg.clone()),
-            AppError::Internal(_)        => {
+            AppError::Unauthorized    => (StatusCode::UNAUTHORIZED, self.to_string()),
+            AppError::NotFound        => (StatusCode::NOT_FOUND, self.to_string()),
+            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.clone()),
+            AppError::Internal(_)     => {
                 tracing::error!("{}", self);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".into())
             }
@@ -42,7 +42,7 @@ impl From<sqlx::Error> for AppError {
 }
 
 impl From<jsonwebtoken::errors::Error> for AppError {
-    fn from(e: jsonwebtoken::errors::Error) -> Self {
+    fn from(_e: jsonwebtoken::errors::Error) -> Self {
         AppError::Unauthorized
     }
 }

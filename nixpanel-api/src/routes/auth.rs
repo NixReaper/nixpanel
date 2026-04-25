@@ -23,29 +23,35 @@ pub struct UserInfo {
     pub role:     String,
 }
 
+// Internal row type — non-macro query returns untyped rows, use FromRow
+#[derive(sqlx::FromRow)]
+struct UserRow {
+    id:            i64,
+    username:      String,
+    password_hash: String,
+    role:          String,
+}
+
 pub async fn login(
     State(state): State<AppState>,
     Json(body): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, AppError> {
-    // Look up user
-    let row = sqlx::query!(
+    let row: Option<UserRow> = sqlx::query_as::<_, UserRow>(
         "SELECT id, username, password_hash, role FROM users WHERE username = ? LIMIT 1",
-        body.username
     )
+    .bind(&body.username)
     .fetch_optional(&state.db)
-    .await?
-    .ok_or(AppError::Unauthorized)?;
+    .await?;
 
-    // Verify password
-    let parsed = PasswordHash::new(&row.password_hash)
-        .map_err(|_| AppError::Unauthorized)?;
+    let row = row.ok_or(AppError::Unauthorized)?;
+
+    let parsed = PasswordHash::new(&row.password_hash).map_err(|_| AppError::Unauthorized)?;
     Argon2::default()
         .verify_password(body.password.as_bytes(), &parsed)
         .map_err(|_| AppError::Unauthorized)?;
 
-    // Issue JWT
     let token = Claims::new(row.id, &row.username, &row.role, &state.config.jwt_secret)
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
 
     Ok(Json(LoginResponse {
         token,

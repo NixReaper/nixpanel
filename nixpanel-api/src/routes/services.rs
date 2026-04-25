@@ -2,12 +2,11 @@ use axum::{
     extract::{Path, State},
     Json,
 };
-use serde::{Deserialize, Serialize};
 
 use crate::{auth::Claims, error::AppError, section, state::AppState};
 
 pub async fn list_services(
-    claims: Claims,
+    _claims: Claims,
     State(state): State<AppState>,
 ) -> Result<Json<serde_json::Value>, AppError> {
     let resp = section::call(
@@ -22,12 +21,12 @@ pub async fn list_services(
 }
 
 pub async fn service_action(
-    claims: Claims,
+    _claims: Claims,
     State(state): State<AppState>,
     Path((name, action)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-    let allowed_actions = ["start", "stop", "restart", "reload"];
-    if !allowed_actions.contains(&action.as_str()) {
+    let allowed = ["start", "stop", "restart", "reload"];
+    if !allowed.contains(&action.as_str()) {
         return Err(AppError::BadRequest(format!("Unknown action: {}", action)));
     }
 
@@ -40,11 +39,10 @@ pub async fn service_action(
     .map_err(|e| AppError::Internal(e))?;
 
     if resp.success {
-        Ok(Json(serde_json::json!({
-            "success": true,
-            "message": resp.data
-        })))
+        Ok(Json(serde_json::json!({ "success": true, "message": resp.data })))
     } else {
-        Err(AppError::BadRequest(resp.error.unwrap_or_else(|| "Action failed".into())))
+        Err(AppError::BadRequest(
+            resp.error.unwrap_or_else(|| "Action failed".into()),
+        ))
     }
 }

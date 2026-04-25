@@ -12,7 +12,6 @@
 use nixpanel_common::{SectionRequest, SectionResponse, ServiceInfo};
 use std::io::{self, BufRead};
 use std::process::Command;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Canonical list of managed services (systemd unit → display name).
 const SERVICES: &[(&str, &str)] = &[

@@ -6,15 +6,15 @@ use crate::{auth::Claims, error::AppError, state::AppState};
 
 #[derive(Serialize, sqlx::FromRow)]
 pub struct Account {
-    pub id:              i64,
-    pub username:        String,
-    pub domain:          String,
-    pub email:           String,
-    pub package_name:    String,
-    pub disk_quota_mb:   i64,
-    pub bandwidth_mb:    i64,
-    pub status:          String,
-    pub created_at:      NaiveDateTime,
+    pub id:            i64,
+    pub username:      String,
+    pub domain:        String,
+    pub email:         String,
+    pub package_name:  String,
+    pub disk_quota_mb: i64,
+    pub bandwidth_mb:  i64,
+    pub status:        String,
+    pub created_at:    NaiveDateTime,
 }
 
 #[derive(Deserialize)]
@@ -29,13 +29,12 @@ pub struct CreateAccountRequest {
 }
 
 pub async fn list_accounts(
-    claims: Claims,
+    _claims: Claims,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<Account>>, AppError> {
-    let accounts = sqlx::query_as!(
-        Account,
+    let accounts = sqlx::query_as::<_, Account>(
         "SELECT id, username, domain, email, package_name, disk_quota_mb, bandwidth_mb, status, created_at
-         FROM accounts ORDER BY created_at DESC"
+         FROM accounts ORDER BY created_at DESC",
     )
     .fetch_all(&state.db)
     .await?;
@@ -43,7 +42,7 @@ pub async fn list_accounts(
 }
 
 pub async fn create_account(
-    claims: Claims,
+    _claims: Claims,
     State(state): State<AppState>,
     Json(body): Json<CreateAccountRequest>,
 ) -> Result<Json<Account>, AppError> {
@@ -52,61 +51,60 @@ pub async fn create_account(
         Argon2,
     };
 
-    // Validate
     if body.username.is_empty() || body.domain.is_empty() {
         return Err(AppError::BadRequest("username and domain are required".into()));
     }
 
-    // Hash password
-    let salt   = SaltString::generate(&mut OsRng);
-    let hash   = Argon2::default()
+    let salt = SaltString::generate(&mut OsRng);
+    let hash = Argon2::default()
         .hash_password(body.password.as_bytes(), &salt)
-        .map_err(|e| AppError::Internal(anyhow::anyhow!(e)))?
+        .map_err(|e| AppError::Internal(anyhow::anyhow!("argon2: {}", e)))?
         .to_string();
 
-    // Create system user (best-effort — panel may not be running as root in dev)
+    // Create system user (best-effort)
     let _ = std::process::Command::new("useradd")
-        .args(&[
-            "-m",
-            "-s", "/bin/bash",
-            "-d", &format!("/home/{}", body.username),
-            &body.username,
-        ])
+        .args(["-m", "-s", "/bin/bash", "-d",
+               &format!("/home/{}", body.username),
+               &body.username])
         .output();
 
-    // Create Apache vhost directory
-    let vhost_dir = format!("/home/{}/public_html", body.username);
-    let _ = std::fs::create_dir_all(&vhost_dir);
+    let _ = std::fs::create_dir_all(format!("/home/{}/public_html", body.username));
 
     let package_name  = body.package_name.unwrap_or_else(|| "Default".into());
     let disk_quota_mb = body.disk_quota_mb.unwrap_or(10240);
     let bandwidth_mb  = body.bandwidth_mb.unwrap_or(0);
 
-    let id = sqlx::query!(
+    let insert_id: u64 = sqlx::query(
         "INSERT INTO accounts (username, domain, email, password_hash, package_name, disk_quota_mb, bandwidth_mb, status)
          VALUES (?, ?, ?, ?, ?, ?, ?, 'active')",
-        body.username, body.domain, body.email, hash,
-        package_name, disk_quota_mb, bandwidth_mb
     )
+    .bind(&body.username)
+    .bind(&body.domain)
+    .bind(&body.email)
+    .bind(&hash)
+    .bind(&package_name)
+    .bind(disk_quota_mb)
+    .bind(bandwidth_mb)
     .execute(&state.db)
     .await?
-    .last_insert_id() as i64;
+    .last_insert_id();
 
-    // Also create a panel user so they can log into NixClient
-    let _ = sqlx::query!(
+    // Also create a NixClient panel user
+    let _ = sqlx::query(
         "INSERT INTO users (username, email, password_hash, role) VALUES (?, ?, ?, 'user')
          ON DUPLICATE KEY UPDATE email = VALUES(email)",
-        body.username, body.email, hash
     )
+    .bind(&body.username)
+    .bind(&body.email)
+    .bind(&hash)
     .execute(&state.db)
     .await;
 
-    let account = sqlx::query_as!(
-        Account,
+    let account = sqlx::query_as::<_, Account>(
         "SELECT id, username, domain, email, package_name, disk_quota_mb, bandwidth_mb, status, created_at
          FROM accounts WHERE id = ?",
-        id
     )
+    .bind(insert_id)
     .fetch_one(&state.db)
     .await?;
 
