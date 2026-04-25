@@ -136,7 +136,20 @@ if ! step_done "packages"; then
 fi
 success "System packages installed"
 
-# ── 4. Rust toolchain ─────────────────────────────────────────────────────────
+# ── 4. Node.js 20 LTS ─────────────────────────────────────────────────────────
+step "Installing Node.js"
+if ! step_done "nodejs"; then
+  export DEBIAN_FRONTEND=noninteractive
+  if ! command -v node &>/dev/null || [[ "$(node --version | cut -d. -f1 | tr -d 'v')" -lt 18 ]]; then
+    info "Installing Node.js 20 LTS via NodeSource…"
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - 2>/dev/null
+    apt-get install -y -qq nodejs
+  fi
+  mark_done "nodejs"
+fi
+success "Node.js $(node --version) / npm $(npm --version) ready"
+
+# ── 5. Rust toolchain ─────────────────────────────────────────────────────────
 step "Installing Rust toolchain"
 if ! step_done "rust"; then
   curl -fsSL https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
@@ -205,10 +218,10 @@ if ! step_done "build_uis"; then
   if [[ -f "nixserver/package.json" ]]; then
     info "Building NixServer…"
     cd "$SRC_DIR/nixserver"
-    npm install --legacy-peer-deps --quiet 2>/dev/null || true
-    npm run build --silent 2>/dev/null
+    npm install --legacy-peer-deps
+    npm run build
     mkdir -p "$INSTALL_DIR/nixserver/dist"
-    cp -r dist/* "$INSTALL_DIR/nixserver/dist/" 2>/dev/null || true
+    cp -r dist/* "$INSTALL_DIR/nixserver/dist/"
     success "NixServer built"
   fi
 
@@ -216,10 +229,10 @@ if ! step_done "build_uis"; then
   if [[ -f "nixclient/package.json" ]]; then
     info "Building NixClient…"
     cd "$SRC_DIR/nixclient"
-    npm install --legacy-peer-deps --quiet 2>/dev/null || true
-    npm run build --silent 2>/dev/null
+    npm install --legacy-peer-deps
+    npm run build
     mkdir -p "$INSTALL_DIR/nixclient/dist"
-    cp -r dist/* "$INSTALL_DIR/nixclient/dist/" 2>/dev/null || true
+    cp -r dist/* "$INSTALL_DIR/nixclient/dist/"
     success "NixClient built"
   fi
 
