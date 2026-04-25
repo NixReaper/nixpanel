@@ -394,7 +394,7 @@ function ClientPanel() {
 
       {/* Footer */}
       <footer className="border-t border-[#2a3044] px-6 py-3 text-center text-[10px] text-gray-700">
-        NixPanel Client v0.1.0 · {domain} · Powered by NixServer
+        NixPanel Client v0.2.0-alpha · {domain} · Powered by NixServer
       </footer>
     </div>
   )
@@ -500,7 +500,7 @@ export default function App() {
           </form>
 
           <div className="border-t border-[#2a3044] px-6 py-3 bg-[#0f1520] text-[10px] text-gray-700 text-center">
-            NixPanel Client v0.1.0 · Manage your hosting account
+            NixPanel Client v0.2.0-alpha · Manage your hosting account
           </div>
         </div>
       </div>

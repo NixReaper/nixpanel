@@ -622,7 +622,7 @@ function AdminPanel({ username, onLogout }: { username: string; onLogout: () => 
         <main className="flex-1 p-6 overflow-auto">{renderPage()}</main>
 
         <footer className="border-t border-[#2a3044] px-6 py-2 flex items-center justify-between text-[10px] text-gray-700">
-          <span>NixPanel WHM v0.1.0 · Ubuntu 24.04 LTS</span>
+          <span>NixPanel WHM v0.2.0-alpha · Ubuntu 24.04 LTS</span>
           <span>© 2025 NixPanel</span>
         </footer>
       </div>
@@ -699,7 +699,7 @@ export default function App() {
             ))}
           </div>
         </div>
-        <p className="text-[10px] text-gray-700">NixPanel WHM v0.1.0 · Secured by Fail2ban</p>
+        <p className="text-[10px] text-gray-700">NixPanel WHM v0.2.0-alpha · Secured by Fail2ban</p>
       </div>
 
       {/* Login form */}
@@ -744,7 +744,7 @@ export default function App() {
 
             <div className="border-t border-[#2a3044] px-6 py-3 bg-[#0f1520] flex items-center justify-between text-[10px] text-gray-700">
               <span>Secured by Fail2ban</span>
-              <span>NixPanel v0.1</span>
+              <span>NixPanel v0.2.0-alpha</span>
             </div>
           </div>
         </div>
