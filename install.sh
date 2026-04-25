@@ -226,7 +226,7 @@ if ! step_done "build_uis"; then
   fi
 
   # Build NixClient (cPanel user panel)
-  if [[ -f "nixclient/package.json" ]]; then
+  if [[ -f "$SRC_DIR/nixclient/package.json" ]]; then
     info "Building NixClient…"
     cd "$SRC_DIR/nixclient"
     npm install --legacy-peer-deps
@@ -270,45 +270,23 @@ success "Secrets ready"
 # ── 10. Admin setup ───────────────────────────────────────────────────────────
 step "Panel configuration"
 if ! step_done "admin_account"; then
-  echo ""
-  echo -e "  ${BOLD}Create your NixPanel admin account${RESET}"
-  read -rp  "  Admin username [admin]: "                    ADMIN_USER
-  ADMIN_USER="${ADMIN_USER:-admin}"
-  read -rsp "  Admin password: "                            ADMIN_PASS;  echo ""
-  read -rsp "  Confirm password: "                          ADMIN_PASS2; echo ""
-  [[ "$ADMIN_PASS" != "$ADMIN_PASS2" ]] && error "Passwords do not match"
-  read -rp  "  Admin email: "                               ADMIN_EMAIL
-  read -rp  "  Server hostname/domain [$(hostname -f)]: "   SERVER_HOST
-  SERVER_HOST="${SERVER_HOST:-$(hostname -f)}"
-  read -rp  "  NixPanel license key: "                      LICENSE_KEY
+  ADMIN_USER="admin"
+  ADMIN_PASS=$(openssl rand -base64 16 | tr -d '/+=' | head -c 20)
+  ADMIN_EMAIL="admin@$(hostname -f)"
+  SERVER_HOST=$(hostname -f)
 
   echo "$SERVER_HOST"  > "$INSTALL_DIR/.server_host"
-  echo "$LICENSE_KEY"  > "$INSTALL_DIR/.license_key"
-  chmod 600 "$INSTALL_DIR/.server_host" "$INSTALL_DIR/.license_key"
-
-  # Validate license key against central server
-  info "Validating license key with ${LICENSING_URL}…"
-  SERVER_IP=$(hostname -I | awk '{print $1}')
-  HTTP_STATUS=$(curl -s -o /tmp/lic_resp.json -w "%{http_code}" \
-    -X POST "${LICENSING_URL}/api/v1/activate" \
-    -H "Content-Type: application/json" \
-    -d "{\"license_key\":\"${LICENSE_KEY}\",\"server_ip\":\"${SERVER_IP}\"}" \
-    2>/dev/null || echo "000")
-
-  if [[ "$HTTP_STATUS" == "200" ]]; then
-    success "License activated"
-  elif [[ "$HTTP_STATUS" == "000" ]]; then
-    warn "Could not reach ${LICENSING_URL} — proceeding in grace period mode"
-  else
-    warn "License server returned HTTP ${HTTP_STATUS}:"
-    cat /tmp/lic_resp.json 2>/dev/null || true
-    echo ""
-    warn "Continuing install — fix license key in ${INSTALL_DIR}/.license_key and restart nixpanel"
-  fi
+  echo ""              > "$INSTALL_DIR/.license_key"   # set via nixpanel.io after install
+  echo "$ADMIN_USER"   > "$INSTALL_DIR/.admin_user"
+  echo "$ADMIN_PASS"   > "$INSTALL_DIR/.admin_pass"
+  chmod 600 "$INSTALL_DIR/.server_host" "$INSTALL_DIR/.license_key" \
+            "$INSTALL_DIR/.admin_user"  "$INSTALL_DIR/.admin_pass"
 
   mark_done "admin_account"
 else
   SERVER_HOST=$(cat "$INSTALL_DIR/.server_host" 2>/dev/null || hostname -f)
+  ADMIN_USER=$(cat "$INSTALL_DIR/.admin_user"   2>/dev/null || echo "admin")
+  ADMIN_PASS=$(cat "$INSTALL_DIR/.admin_pass"   2>/dev/null || echo "(see /opt/nixpanel/.admin_pass)")
 fi
 success "Panel configuration done"
 
@@ -472,9 +450,12 @@ echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━�
 echo -e "${BOLD}${GREEN}  NixPanel Installation Complete!${RESET}"
 echo -e "${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""
-echo -e "  ${BOLD}WHM   (Admin panel):${RESET}   http://${SERVER_IP}:2087"
-echo -e "  ${BOLD}cPanel (User panel):${RESET}   http://${SERVER_IP}:2083"
-echo -e "  ${BOLD}Licensing server:${RESET}      ${LICENSING_URL}  (central)"
+echo -e "  ${BOLD}NixServer  (Admin):${RESET}    http://${SERVER_IP}:2087"
+echo -e "  ${BOLD}NixClient  (Users):${RESET}    http://${SERVER_IP}:2083"
+echo ""
+echo -e "  ${BOLD}${YELLOW}Login credentials (save these!):${RESET}"
+echo -e "  ${BOLD}Username:${RESET}  ${ADMIN_USER}"
+echo -e "  ${BOLD}Password:${RESET}  ${ADMIN_PASS}"
 echo ""
 echo -e "  ${BOLD}Logs:${RESET}    ${LOG_DIR}/"
 echo -e "  ${BOLD}Config:${RESET}  ${INSTALL_DIR}/.env"
