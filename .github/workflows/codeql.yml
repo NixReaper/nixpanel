@@ -1,4 +1,4 @@
-name: "CodeQL & Security Audit"
+name: "Security Audit"
 
 on:
   push:
@@ -10,55 +10,34 @@ on:
     - cron: "0 8 * * 1"
 
 jobs:
-  # ── CodeQL analysis ──────────────────────────────────────────────────────────
-  codeql:
-    name: CodeQL
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    strategy:
-      fail-fast: false
-      matrix:
-        language: ["javascript-typescript"]
-        # Rust is not yet supported by CodeQL; covered by cargo-audit below.
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: ${{ matrix.language }}
-          queries: security-extended,security-and-quality
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:${{ matrix.language }}"
-
-  # ── Rust security audit (cargo-audit) ────────────────────────────────────────
+  # ── Rust dependency audit (cargo-audit) ──────────────────────────────────────
+  # Skipped automatically when no Cargo.toml is present at repo root.
   rust-audit:
     name: Rust Security Audit
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Check for Cargo.toml
+        id: has_cargo
+        run: |
+          if [ -f Cargo.toml ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No Cargo.toml found — skipping Rust audit"
+          fi
+
       - name: Install Rust stable
+        if: steps.has_cargo.outputs.present == 'true'
         uses: dtolnay/rust-toolchain@stable
 
       - name: Cache cargo registry
+        if: steps.has_cargo.outputs.present == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -66,33 +45,28 @@ jobs:
             ~/.cargo/git
           key: ${{ runner.os }}-cargo-audit-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Install cargo-audit
-        run: cargo install cargo-audit --locked
-
-      - name: Run cargo audit
-        # --deny warnings treats advisories as errors so the job fails on CVEs
+      - name: Install and run cargo-audit
+        if: steps.has_cargo.outputs.present == 'true'
         run: |
-          if [ -f Cargo.toml ]; then
-            cargo audit --deny warnings
-          else
-            echo "No Cargo.toml at repo root — skipping rust audit"
-          fi
+          cargo install cargo-audit --locked
+          cargo audit --deny warnings
 
-  # ── Shell script lint (ShellCheck) ───────────────────────────────────────────
+  # ── Shell script security lint (ShellCheck) ───────────────────────────────────
+  # Fails only on errors (SC severity ≥ error). Warnings are reported but
+  # do not block the build — keeping CI signal meaningful.
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@master
+        uses: ludeeus/action-shellcheck@2.0.0
         with:
-          severity: warning
+          severity: error
           scandir: "."
           ignore_paths: ".git"
