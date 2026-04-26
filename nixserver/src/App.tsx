@@ -435,6 +435,25 @@ function ListAccounts({ onNav }: { onNav: (p: Page) => void }) {
   )
 }
 
+/* ── Reusable form field — defined at module level to avoid remount bug ───── */
+function FormField({ label, type = 'text', placeholder = '', value, onChange }: {
+  label: string; type?: string; placeholder?: string
+  value: string; onChange: (v: string) => void
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-400 mb-1.5">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500/60"
+      />
+    </div>
+  )
+}
+
 /* ── Create account form ─────────────────────────────────────────────────── */
 function CreateAccount({ onNav }: { onNav: (p: Page) => void }) {
   const [form, setForm] = useState({
@@ -442,7 +461,7 @@ function CreateAccount({ onNav }: { onNav: (p: Page) => void }) {
     package_name: 'Default', disk_quota_mb: 10240, bandwidth_mb: 0,
   })
   const [loading, setLoading] = useState(false)
-  const [error, setError]   = useState('')
+  const [error, setError]     = useState('')
   const [success, setSuccess] = useState('')
 
   const set = (k: string, v: string | number) => setForm(f => ({ ...f, [k]: v }))
@@ -465,16 +484,6 @@ function CreateAccount({ onNav }: { onNav: (p: Page) => void }) {
     }
   }
 
-  const Field = ({ label, name, type = 'text', placeholder = '' }: { label: string; name: string; type?: string; placeholder?: string }) => (
-    <div>
-      <label className="block text-xs font-semibold text-gray-400 mb-1.5">{label}</label>
-      <input type={type} value={String((form as any)[name])} onChange={e => set(name, e.target.value)}
-        placeholder={placeholder}
-        className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500/60"
-      />
-    </div>
-  )
-
   return (
     <div className="max-w-2xl space-y-5">
       <h1 className="text-lg font-black text-white">Create Hosting Account</h1>
@@ -485,16 +494,16 @@ function CreateAccount({ onNav }: { onNav: (p: Page) => void }) {
       <form onSubmit={handleSubmit} className="bg-[#1a1f2e] border border-[#2a3044] rounded-lg divide-y divide-[#2a3044]">
         <div className="p-5 space-y-4">
           <h2 className="text-xs font-bold text-orange-400 uppercase tracking-widest">Domain Information</h2>
-          <Field label="Domain Name" name="domain" placeholder="example.com" />
+          <FormField label="Domain Name" value={form.domain} onChange={v => set('domain', v)} placeholder="example.com" />
         </div>
 
         <div className="p-5 space-y-4">
           <h2 className="text-xs font-bold text-orange-400 uppercase tracking-widest">Account Credentials</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Username"       name="username" placeholder="username" />
-            <Field label="Password"       name="password" type="password" placeholder="••••••••" />
+            <FormField label="Username"     value={form.username} onChange={v => set('username', v)} placeholder="username" />
+            <FormField label="Password"     value={form.password} onChange={v => set('password', v)} placeholder="••••••••" type="password" />
             <div className="col-span-2">
-              <Field label="Email Address" name="email" type="email" placeholder="user@example.com" />
+              <FormField label="Email Address" value={form.email} onChange={v => set('email', v)} placeholder="user@example.com" type="email" />
             </div>
           </div>
         </div>
