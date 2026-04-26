@@ -8,6 +8,25 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `nixpanel-accounts` section binary — full account provisioner
+  - Creates Apache vhost with PHP-FPM proxy
+  - Creates PHP-FPM pool (per-user socket, open_basedir isolation)
+  - Creates PowerDNS zone with A, www, mail, ftp, MX, SPF records
+  - Builds home directory structure: `public_html/`, `logs/`, `tmp/`, `mail/`, `backups/`
+  - Writes default `index.html` for new domains
+  - Sets correct ownership and permissions
+  - `deprovision` action removes vhost, FPM pool, DNS zone
+- NixClient real JWT authentication — login now calls `/api/auth/login`
+  - Session persists across refresh via `localStorage`
+  - Admin accounts redirected to NixServer (port 2087) instead of being allowed in
+
+### Fixed
+- NixClient login accepted any username/password (was using fake `setTimeout` bypass)
+- NixClient Sign out button now clears JWT and session correctly
+- `CreateAccount` `FormField` component moved to module level — fixes focus jumping to next field after one keystroke (React remount bug from component defined inside render function)
+- `BIGINT UNSIGNED` columns changed to `BIGINT` in DB schema — fixes `i64` type mismatch error on login
+
 ### Planned
 - DNS zone editor (CRUD records via PowerDNS API)
 - Email account management (Dovecot mailbox provisioning)

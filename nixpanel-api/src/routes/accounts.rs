@@ -61,18 +61,41 @@ pub async fn create_account(
         .map_err(|e| AppError::Internal(anyhow::anyhow!("argon2: {}", e)))?
         .to_string();
 
-    // Create system user (best-effort)
+    // Create system user (must exist before provisioner runs)
     let _ = std::process::Command::new("useradd")
         .args(["-m", "-s", "/bin/bash", "-d",
                &format!("/home/{}", body.username),
                &body.username])
         .output();
 
-    let _ = std::fs::create_dir_all(format!("/home/{}/public_html", body.username));
-
     let package_name  = body.package_name.unwrap_or_else(|| "Default".into());
     let disk_quota_mb: i32 = body.disk_quota_mb.unwrap_or(10240);
     let bandwidth_mb:  i32 = body.bandwidth_mb.unwrap_or(0);
+
+    // Run the full account provisioner (vhost, PHP-FPM, DNS zone, home dirs)
+    let provision_result = crate::section::call(
+        &state.config.bin_dir,
+        "nixpanel-accounts",
+        "provision",
+        serde_json::json!({
+            "username":    body.username,
+            "domain":      body.domain,
+            "email":       body.email,
+            "php_version": "8.3",
+        }),
+    );
+
+    if let Err(ref e) = provision_result {
+        tracing::warn!("Account provisioner error for {}: {}", body.username, e);
+    } else if let Ok(ref resp) = provision_result {
+        if let Some(errors) = resp.data.as_ref().and_then(|d| d.get("errors")) {
+            tracing::warn!("Provisioner partial errors for {}: {}", body.username, errors);
+        }
+        tracing::info!("Provisioner steps for {}: {:?}",
+            body.username,
+            resp.data.as_ref().and_then(|d| d.get("steps"))
+        );
+    }
 
     let insert_id: u64 = sqlx::query(
         "INSERT INTO accounts (username, domain, email, password_hash, package_name, disk_quota_mb, bandwidth_mb, status)

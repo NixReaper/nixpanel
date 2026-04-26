@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import * as api from './api'
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
 type Page =
@@ -304,14 +305,11 @@ const PAGE_META: Record<Page, { title: string; icon: string }> = {
 }
 
 /* ── Client panel shell ─────────────────────────────────────────────────── */
-function ClientPanel() {
+function ClientPanel({ onLogout }: { onLogout: () => void }) {
   const [page, setPage] = useState<Page>('home')
-  const [loggedIn, setLoggedIn] = useState(true)
-
-  if (!loggedIn) return null
-
   const meta = PAGE_META[page]
-  const domain = 'yourdomain.com'
+  const username = localStorage.getItem('nixclient_username') ?? 'user'
+  const domain = username  // domain matches account username for now
 
   function renderPage() {
     if (page === 'home') return <Home onNav={setPage} />
@@ -363,7 +361,7 @@ function ClientPanel() {
               <span className="text-xs text-gray-300 font-medium max-w-[120px] truncate">{domain}</span>
             </div>
             <button
-              onClick={() => setLoggedIn(false)}
+              onClick={onLogout}
               className="px-3 py-1.5 rounded-lg border border-[#2a3044] text-gray-400 hover:border-gray-600 hover:text-white transition-colors text-xs font-medium"
             >
               Sign out
@@ -404,11 +402,19 @@ function ClientPanel() {
 export default function App() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [error, setError] = useState('')
+  const [loggedInAs, setLoggedInAs] = useState<string | null>(null)
+  const [error, setError]   = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Restore session on load
+  useEffect(() => {
+    if (api.isLoggedIn()) {
+      const stored = localStorage.getItem('nixclient_username')
+      setLoggedInAs(stored ?? 'user')
+    }
+  }, [])
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!username || !password) {
       setError('Please enter your username and password.')
@@ -416,13 +422,31 @@ export default function App() {
     }
     setLoading(true)
     setError('')
-    setTimeout(() => {
+    try {
+      const result = await api.login(username, password)
+      // Only allow non-admin users into NixClient
+      if (result.user.role === 'admin') {
+        api.clearToken()
+        setError('Admin accounts must use NixServer (port 2087).')
+        return
+      }
+      localStorage.setItem('nixclient_username', result.user.username)
+      setLoggedInAs(result.user.username)
+    } catch (err: any) {
+      setError(err.message === 'Unauthorized' ? 'Invalid username or password.' : err.message)
+    } finally {
       setLoading(false)
-      setIsLoggedIn(true)
-    }, 600)
+    }
   }
 
-  if (isLoggedIn) return <ClientPanel />
+  const handleLogout = () => {
+    api.clearToken()
+    localStorage.removeItem('nixclient_username')
+    setLoggedInAs(null)
+    setUsername(''); setPassword('')
+  }
+
+  if (loggedInAs) return <ClientPanel onLogout={handleLogout} />
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0f1520] relative overflow-hidden">

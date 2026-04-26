@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "nixpanel-common",
     "nixpanel-api",
+    "nixpanel-accounts",
     "nixpanel-services",
     "nixpanel-sysinfo",
 ]

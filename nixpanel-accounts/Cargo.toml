@@ -1,0 +1,13 @@
+[package]
+name    = "nixpanel-accounts"
+version = "0.2.0-alpha"
+edition = "2021"
+
+[[bin]]
+name = "nixpanel-accounts"
+path = "src/main.rs"
+
+[dependencies]
+nixpanel-common = { path = "../nixpanel-common" }
+serde            = { version = "1", features = ["derive"] }
+serde_json       = "1"
