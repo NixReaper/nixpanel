@@ -94,6 +94,29 @@ export async function deleteEmailAccount(id: number): Promise<void> {
   await apiFetch(`/email/id/${id}`, { method: 'DELETE' })
 }
 
+/* ── Databases ───────────────────────────────────────────────────────── */
+export interface Database {
+  id: number
+  account_id: number
+  db_name: string
+  db_user: string
+  created_at: string
+}
+export async function listMyDatabases(username: string): Promise<Database[]> {
+  return apiFetch(`/databases/${username}`)
+}
+export async function createDatabase(data: {
+  username: string
+  db_suffix: string
+  db_user_suffix?: string
+  db_password: string
+}): Promise<Database> {
+  return apiFetch('/databases', { method: 'POST', body: JSON.stringify(data) })
+}
+export async function deleteDatabase(dbName: string): Promise<void> {
+  await apiFetch(`/databases/name/${encodeURIComponent(dbName)}`, { method: 'DELETE' })
+}
+
 /* ── Password change ─────────────────────────────────────────────────── */
 export async function changePassword(
   currentPassword: string,

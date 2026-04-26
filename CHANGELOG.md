@@ -11,12 +11,32 @@ Versions follow [Semantic Versioning](https://semver.org/).
 ### Planned
 - SSL certificate management (Let's Encrypt via Certbot)
 - File manager
-- MySQL/MariaDB database manager (per-account)
+- FTP account management (vsftpd)
 - WordPress one-click installer
 - Backup / restore system
 - Firewall rule editor (CSF/iptables)
 - Multi-server support (Agency plan)
-- NixClient pages: databases, FTP, subdomains, redirects, PHP version selector, stats
+- NixClient pages: FTP, subdomains, redirects, PHP version selector, stats
+
+---
+
+## [0.4.0-alpha] — 2026-04-26
+
+### Added
+- **MySQL / MariaDB database manager**
+  - `GET  /api/databases`              — list all databases across all accounts (admin)
+  - `GET  /api/databases/:username`    — list databases for one hosting account
+  - `POST /api/databases`             — create database + dedicated MariaDB user with GRANT ALL
+  - `DELETE /api/databases/name/:db_name` — drop database + user, cascade nixpanel record
+  - cPanel-style namespacing: `username_dbname` / `username_dbuser` (max 64/32 chars)
+  - Identifier validation (alphanumeric + underscore only)
+  - Live connection-details preview in the create form (database, username, host, port)
+  - Safety check: refuses to drop databases without the account prefix separator
+- **NixServer — Databases page**: admin view across all accounts, create form with live preview, drop with confirmation modal
+- **NixClient — MySQL Databases page**: per-account view, create with password confirm + connection-info card, drop with confirmation
+
+### Changed
+- NixServer/NixClient footer version: `v0.3.0-alpha` → `v0.4.0-alpha`
 
 ---
 
@@ -130,7 +150,8 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
-[Unreleased]: https://github.com/NixReaper/nixpanel/compare/v0.3.0-alpha...HEAD
+[Unreleased]: https://github.com/NixReaper/nixpanel/compare/v0.4.0-alpha...HEAD
+[0.4.0-alpha]: https://github.com/NixReaper/nixpanel/compare/v0.3.0-alpha...v0.4.0-alpha
 [0.3.0-alpha]: https://github.com/NixReaper/nixpanel/compare/v0.2.0-alpha...v0.3.0-alpha
 [0.2.0-alpha]: https://github.com/NixReaper/nixpanel/compare/v0.1.0-alpha...v0.2.0-alpha
 [0.1.0-alpha]: https://github.com/NixReaper/nixpanel/releases/tag/v0.1.0-alpha

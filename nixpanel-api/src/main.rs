@@ -124,6 +124,14 @@ fn build_router(state: AppState) -> Router {
                post(routes::accounts::suspend_account))
         .route("/api/accounts/:username/unsuspend",
                post(routes::accounts::unsuspend_account))
+        // Databases
+        .route("/api/databases",
+               get(routes::databases::list_all_databases)
+               .post(routes::databases::create_database))
+        .route("/api/databases/:username",
+               get(routes::databases::list_account_databases))
+        .route("/api/databases/name/:db_name",
+               delete(routes::databases::delete_database))
         // DNS
         .route("/api/dns",                    get(routes::dns::list_zones))
         .route("/api/dns/:domain",

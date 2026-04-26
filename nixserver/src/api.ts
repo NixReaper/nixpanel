@@ -148,6 +148,33 @@ export async function terminateAccount(username: string): Promise<void> {
   await apiFetch(`/accounts/${username}`, { method: 'DELETE' })
 }
 
+/* ── Databases ───────────────────────────────────────────────────────── */
+export interface Database {
+  id: number
+  account_id: number
+  db_name: string
+  db_user: string
+  created_at: string
+  account_username?: string  // present in admin list view
+}
+export async function listAllDatabases(): Promise<Database[]> {
+  return apiFetch('/databases')
+}
+export async function listAccountDatabases(username: string): Promise<Database[]> {
+  return apiFetch(`/databases/${username}`)
+}
+export async function createDatabase(data: {
+  username: string
+  db_suffix: string
+  db_user_suffix?: string
+  db_password: string
+}): Promise<Database> {
+  return apiFetch('/databases', { method: 'POST', body: JSON.stringify(data) })
+}
+export async function deleteDatabase(dbName: string): Promise<void> {
+  await apiFetch(`/databases/name/${encodeURIComponent(dbName)}`, { method: 'DELETE' })
+}
+
 /* ── DNS ─────────────────────────────────────────────────────────────── */
 export interface DnsRecord {
   name: string

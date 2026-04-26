@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import * as api from './api'
-import type { DashboardData, ServiceInfo, Account, DnsRecord, EmailAccount } from './api'
+import type { DashboardData, ServiceInfo, Account, DnsRecord, EmailAccount, Database } from './api'
 
 /* ── Types ───────────────────────────────────────────────────────────── */
 type Page =
@@ -879,6 +879,211 @@ function DnsRecords({ onNav }: { onNav: (p: Page) => void }) {
   )
 }
 
+/* ── Database Manager ─────────────────────────────────────────────────── */
+function DatabaseManager() {
+  const [dbs, setDbs]         = useState<Database[]>([])
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showAdd, setShowAdd] = useState(false)
+  const [msg, setMsg]         = useState('')
+  const [confirm, setConfirm] = useState<string | null>(null)
+  const [form, setForm]       = useState({
+    username: '', db_suffix: '', db_user_suffix: '', db_password: '',
+  })
+
+  const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 5000) }
+
+  const refresh = () => {
+    setLoading(true)
+    api.listAllDatabases()
+      .then(setDbs)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    refresh()
+    api.getAccounts().then(setAccounts).catch(console.error)
+  }, [])
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const db = await api.createDatabase({
+        username: form.username,
+        db_suffix: form.db_suffix,
+        db_user_suffix: form.db_user_suffix || undefined,
+        db_password: form.db_password,
+      })
+      flash(`Created database ${db.db_name}`)
+      setShowAdd(false)
+      setForm({ username: '', db_suffix: '', db_user_suffix: '', db_password: '' })
+      refresh()
+    } catch (e: any) {
+      flash(`Error: ${e.message}`)
+    }
+  }
+
+  const handleDelete = async (dbName: string) => {
+    try {
+      await api.deleteDatabase(dbName)
+      flash(`Deleted ${dbName}`)
+      refresh()
+    } catch (e: any) {
+      flash(`Error: ${e.message}`)
+    }
+    setConfirm(null)
+  }
+
+  // Preview the namespaced names
+  const previewDb   = form.username && form.db_suffix
+    ? `${form.username}_${form.db_suffix}`
+    : '…'
+  const previewUser = form.username && (form.db_user_suffix || form.db_suffix)
+    ? `${form.username}_${form.db_user_suffix || form.db_suffix}`
+    : '…'
+
+  return (
+    <div className="space-y-4">
+      {/* Confirm modal */}
+      {confirm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1a1f2e] border border-[#2a3044] rounded-xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-base font-bold text-white mb-2">⚠️ Drop Database</h3>
+            <p className="text-sm text-gray-400 mb-5">
+              Permanently drop <span className="text-white font-semibold">{confirm}</span> and its dedicated user? All data will be lost.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirm(null)} className="px-4 py-2 rounded-lg border border-[#2a3044] text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
+              <button onClick={() => handleDelete(confirm)} className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors">Drop Database</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-black text-white">MySQL / MariaDB</h1>
+          <p className="text-xs text-gray-500 mt-0.5">{dbs.length} database{dbs.length !== 1 ? 's' : ''} across all accounts</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {msg && <span className="text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 rounded-lg">{msg}</span>}
+          <button onClick={() => setShowAdd(!showAdd)}
+            className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded transition-colors">
+            + Create Database
+          </button>
+        </div>
+      </div>
+
+      {/* Create form */}
+      {showAdd && (
+        <form onSubmit={handleCreate} className="bg-[#1a1f2e] border border-orange-500/30 rounded-lg p-5 space-y-4">
+          <h3 className="text-sm font-bold text-orange-400">New Database</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Account</label>
+              <select value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} required
+                className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60">
+                <option value="">— Select account —</option>
+                {accounts.map(a => <option key={a.username} value={a.username}>{a.username} ({a.domain})</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Database Name</label>
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-500 text-sm shrink-0">{form.username || 'user'}_</span>
+                <input value={form.db_suffix} onChange={e => setForm(f => ({ ...f, db_suffix: e.target.value }))} required
+                  placeholder="wordpress"
+                  className="flex-1 bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">DB Username <span className="text-gray-600 normal-case font-normal">(leave blank to match DB name)</span></label>
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-500 text-sm shrink-0">{form.username || 'user'}_</span>
+                <input value={form.db_user_suffix} onChange={e => setForm(f => ({ ...f, db_user_suffix: e.target.value }))}
+                  placeholder={form.db_suffix || 'wordpress'}
+                  className="flex-1 bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">DB Password</label>
+              <input type="password" value={form.db_password} onChange={e => setForm(f => ({ ...f, db_password: e.target.value }))} required
+                placeholder="Min 6 characters"
+                className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60" />
+            </div>
+          </div>
+
+          {/* Live preview */}
+          {form.username && form.db_suffix && (
+            <div className="bg-[#0f1520] border border-[#2a3044] rounded-lg p-3 text-xs font-mono space-y-1">
+              <div className="flex gap-3">
+                <span className="text-gray-600 w-20">Database:</span>
+                <span className="text-emerald-400">{previewDb}</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-gray-600 w-20">Username:</span>
+                <span className="text-blue-400">{previewUser}</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-gray-600 w-20">Host:</span>
+                <span className="text-gray-400">localhost</span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button type="submit" className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded transition-colors">Create Database</button>
+            <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 border border-[#2a3044] text-gray-400 hover:text-white text-sm rounded transition-colors">Cancel</button>
+          </div>
+        </form>
+      )}
+
+      {/* Databases table */}
+      <div className="bg-[#1a1f2e] border border-[#2a3044] rounded-lg overflow-hidden">
+        {loading ? (
+          <div className="py-12 text-center text-gray-600 text-sm">
+            <span className="inline-block w-4 h-4 border-2 border-gray-700 border-t-orange-500 rounded-full animate-spin mr-2" />Loading…
+          </div>
+        ) : dbs.length === 0 ? (
+          <div className="py-16 text-center">
+            <div className="text-4xl mb-3">🗄️</div>
+            <p className="text-gray-500 text-sm">No databases yet.</p>
+            <button onClick={() => setShowAdd(true)} className="mt-3 text-orange-400 hover:underline text-sm">Create your first database →</button>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#2a3044] bg-[#0f1520]">
+                {['Database', 'DB User', 'Host', 'Account', 'Created', 'Actions'].map(h => (
+                  <th key={h} className="text-left px-4 py-2.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dbs.map(db => (
+                <tr key={db.id} className="border-b border-[#252b3d] hover:bg-[#252b3d]/50 transition-colors">
+                  <td className="px-4 py-2.5 text-emerald-400 font-medium font-mono text-xs">{db.db_name}</td>
+                  <td className="px-4 py-2.5 text-blue-400 font-mono text-xs">{db.db_user}</td>
+                  <td className="px-4 py-2.5 text-gray-600 text-xs">localhost</td>
+                  <td className="px-4 py-2.5 text-gray-400 text-xs">{db.account_username ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-600 text-xs">{new Date(db.created_at).toLocaleDateString()}</td>
+                  <td className="px-4 py-2.5">
+                    <button onClick={() => setConfirm(db.db_name)}
+                      className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:text-red-400 text-gray-400 transition-colors">
+                      Drop
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ── Placeholder ──────────────────────────────────────────────────────── */
 function Placeholder({ title, icon }: { title: string; icon: string }) {
   return (
@@ -925,6 +1130,7 @@ function AdminPanel({ username, onLogout }: { username: string; onLogout: () => 
       case 'domains':       return <ZoneManager onNav={setPage} />
       case 'dns':           return <DnsRecords onNav={setPage} />
       case 'services':      return <ServiceManager />
+      case 'databases':     return <DatabaseManager />
       default:              return <Placeholder title={meta.title} icon={meta.icon} />
     }
   }
