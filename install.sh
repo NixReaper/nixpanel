@@ -278,6 +278,11 @@ if ! step_done "build_panel"; then
 
     mark_done "build_panel"
     success "Panel binaries built and compressed"
+
+    # Always restart the service after a binary update
+    if systemctl is-enabled nixpanel &>/dev/null; then
+      systemctl restart nixpanel 2>/dev/null || true
+    fi
   else
     warn "Panel Rust backend not yet present in repo — skipping build"
     warn "This is expected during early development. Re-run installer when source is ready."
