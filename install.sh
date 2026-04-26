@@ -252,8 +252,9 @@ if ! step_done "build_panel"; then
       apt-get install -y -qq upx-ucl 2>/dev/null || true
     fi
 
-    # Main API binary
+    # Main API binary — stop service first so the file isn't busy
     if [[ -f "target/release/nixpanel" ]]; then
+      systemctl stop nixpanel 2>/dev/null || true
       cp target/release/nixpanel "$BIN_DIR/nixpanel"
       chmod 755 "$BIN_DIR/nixpanel"
       command -v upx &>/dev/null && upx --best --quiet "$BIN_DIR/nixpanel" 2>/dev/null || true
