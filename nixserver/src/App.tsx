@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import * as api from './api'
-import type { DashboardData, ServiceInfo, Account } from './api'
+import type { DashboardData, ServiceInfo, Account, DnsRecord, EmailAccount } from './api'
 
-/* ── Types ──────────────────────────────────────────────────────────────── */
+/* ── Types ───────────────────────────────────────────────────────────── */
 type Page =
   | 'dashboard' | 'accounts' | 'createAccount' | 'listAccounts'
   | 'domains' | 'dns' | 'databases' | 'email'
@@ -10,37 +10,45 @@ type Page =
   | 'apache' | 'php' | 'services'
   | 'settings' | 'logs' | 'packages'
 
-/* ── Nav ─────────────────────────────────────────────────────────────────── */
+/* ── Nav ──────────────────────────────────────────────────────────────── */
 type NavGroup = { label: string; items: { id: Page; label: string; icon: string }[] }
 
 const NAV_GROUPS: NavGroup[] = [
-  { label: 'Overview',          items: [{ id: 'dashboard',    label: 'Dashboard',        icon: '▦' }] },
-  { label: 'Account Management',items: [
-    { id: 'listAccounts', label: 'List Accounts',    icon: '📋' },
-    { id: 'createAccount',label: 'Create Account',   icon: '➕' },
-    { id: 'packages',     label: 'Feature Packages', icon: '📦' },
-  ]},
-  { label: 'Domains & DNS',     items: [
-    { id: 'domains', label: 'Zone Manager', icon: '🌐' },
-    { id: 'dns',     label: 'DNS Records',  icon: '🔗' },
-  ]},
-  { label: 'Databases',         items: [{ id: 'databases', label: 'MySQL / MariaDB',    icon: '🗄️' }] },
-  { label: 'Email',             items: [{ id: 'email',     label: 'Email Routing',      icon: '✉️' }] },
-  { label: 'Security',          items: [
-    { id: 'ssl',      label: 'SSL / TLS',      icon: '🔒' },
-    { id: 'firewall', label: 'Firewall (CSF)', icon: '🛡️' },
-  ]},
-  { label: 'Server',            items: [
-    { id: 'apache',   label: 'Apache Config',   icon: '⚙️' },
-    { id: 'php',      label: 'PHP Manager',     icon: '🐘' },
-    { id: 'services', label: 'Service Manager', icon: '🔧' },
-    { id: 'backups',  label: 'Backup Manager',  icon: '💾' },
-    { id: 'logs',     label: 'System Logs',     icon: '📜' },
-    { id: 'settings', label: 'Server Config',   icon: '🔩' },
-  ]},
+  { label: 'Overview', items: [{ id: 'dashboard', label: 'Dashboard', icon: '▦' }] },
+  {
+    label: 'Account Management', items: [
+      { id: 'listAccounts',  label: 'List Accounts',    icon: '📋' },
+      { id: 'createAccount', label: 'Create Account',   icon: '➕' },
+      { id: 'packages',      label: 'Feature Packages', icon: '📦' },
+    ],
+  },
+  {
+    label: 'Domains & DNS', items: [
+      { id: 'domains', label: 'Zone Manager', icon: '🌐' },
+      { id: 'dns',     label: 'DNS Records',  icon: '🔗' },
+    ],
+  },
+  { label: 'Databases', items: [{ id: 'databases', label: 'MySQL / MariaDB', icon: '🗄️' }] },
+  { label: 'Email',     items: [{ id: 'email',     label: 'Email Routing',   icon: '✉️' }] },
+  {
+    label: 'Security', items: [
+      { id: 'ssl',      label: 'SSL / TLS',      icon: '🔒' },
+      { id: 'firewall', label: 'Firewall (CSF)',  icon: '🛡️' },
+    ],
+  },
+  {
+    label: 'Server', items: [
+      { id: 'apache',   label: 'Apache Config',   icon: '⚙️' },
+      { id: 'php',      label: 'PHP Manager',     icon: '🐘' },
+      { id: 'services', label: 'Service Manager', icon: '🔧' },
+      { id: 'backups',  label: 'Backup Manager',  icon: '💾' },
+      { id: 'logs',     label: 'System Logs',     icon: '📜' },
+      { id: 'settings', label: 'Server Config',   icon: '🔩' },
+    ],
+  },
 ]
 
-/* ── Sidebar ────────────────────────────────────────────────────────────── */
+/* ── Sidebar ──────────────────────────────────────────────────────────── */
 function Sidebar({ current, onNav, onLogout, collapsed, onToggle, username }: {
   current: Page; onNav: (p: Page) => void; onLogout: () => void
   collapsed: boolean; onToggle: () => void; username: string
@@ -107,31 +115,21 @@ function Sidebar({ current, onNav, onLogout, collapsed, onToggle, username }: {
   )
 }
 
-/* ── Stat bar ────────────────────────────────────────────────────────────── */
+/* ── Stat bar ─────────────────────────────────────────────────────────── */
 function StatBar({ data }: { data: DashboardData | null }) {
-  const s = data?.stats
+  const s  = data?.stats
   const si = data?.sysinfo
-
-  const ramPct = si && si.ram_total_mb > 0
-    ? Math.round((si.ram_used_mb / si.ram_total_mb) * 100)
-    : null
-  const diskPct = si && si.disk_total_gb > 0
-    ? Math.round((si.disk_used_gb / si.disk_total_gb) * 100)
-    : null
-
-  function barColor(pct: number) {
-    return pct > 90 ? 'bg-red-500' : pct > 70 ? 'bg-yellow-500' : 'bg-emerald-500'
-  }
-
+  const ramPct  = si && si.ram_total_mb > 0  ? Math.round((si.ram_used_mb  / si.ram_total_mb)  * 100) : null
+  const diskPct = si && si.disk_total_gb > 0 ? Math.round((si.disk_used_gb / si.disk_total_gb) * 100) : null
+  function barColor(pct: number) { return pct > 90 ? 'bg-red-500' : pct > 70 ? 'bg-yellow-500' : 'bg-emerald-500' }
   const stats = [
-    { label: 'Hosting Accounts', value: s?.accounts   ?? '—', unit: '', color: 'text-orange-400',  bar: null },
-    { label: 'Domains',          value: s?.domains     ?? '—', unit: '', color: 'text-blue-400',    bar: null },
-    { label: 'Databases',        value: s?.databases   ?? '—', unit: '', color: 'text-purple-400',  bar: null },
-    { label: 'Email Accounts',   value: s?.email_accounts ?? '—', unit: '', color: 'text-cyan-400', bar: null },
+    { label: 'Hosting Accounts', value: s?.accounts        ?? '—', unit: '', color: 'text-orange-400', bar: null },
+    { label: 'Domains',          value: s?.domains          ?? '—', unit: '', color: 'text-blue-400',   bar: null },
+    { label: 'Databases',        value: s?.databases        ?? '—', unit: '', color: 'text-purple-400', bar: null },
+    { label: 'Email Accounts',   value: s?.email_accounts   ?? '—', unit: '', color: 'text-cyan-400',   bar: null },
     { label: 'Disk Used',        value: si ? `${si.disk_used_gb}` : '—', unit: 'GB', color: diskPct && diskPct > 80 ? 'text-red-400' : 'text-emerald-400', bar: diskPct },
     { label: 'RAM Used',         value: si ? `${Math.round(si.ram_used_mb / 1024 * 10) / 10}` : '—', unit: 'GB', color: ramPct && ramPct > 80 ? 'text-red-400' : 'text-yellow-400', bar: ramPct },
   ]
-
   return (
     <div className="grid grid-cols-3 lg:grid-cols-6 gap-0 border border-[#2a3044] rounded-lg overflow-hidden">
       {stats.map((s, i) => (
@@ -151,7 +149,7 @@ function StatBar({ data }: { data: DashboardData | null }) {
   )
 }
 
-/* ── Service table ───────────────────────────────────────────────────────── */
+/* ── Service table ────────────────────────────────────────────────────── */
 function ServiceTable({ services, loading, onAction }: {
   services: ServiceInfo[]
   loading: boolean
@@ -163,7 +161,6 @@ function ServiceTable({ services, loading, onAction }: {
     warning: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
   }
   const running = services.filter(s => s.status === 'running').length
-
   return (
     <div className="bg-[#1a1f2e] border border-[#2a3044] rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-[#2a3044] flex items-center justify-between">
@@ -177,22 +174,17 @@ function ServiceTable({ services, loading, onAction }: {
         <thead>
           <tr className="border-b border-[#2a3044]">
             {['Service', 'Status', 'PID', 'Uptime', 'Actions'].map(h => (
-              <th key={h} className="text-left px-4 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider hidden-last-two md:table-cell first:table-cell">{h}</th>
+              <th key={h} className="text-left px-4 py-2 text-[10px] font-bold text-gray-500 uppercase tracking-wider">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {loading ? (
-            <tr>
-              <td colSpan={5} className="px-4 py-8 text-center text-gray-600 text-sm">
-                <span className="inline-block w-4 h-4 border-2 border-gray-700 border-t-orange-500 rounded-full animate-spin mr-2" />
-                Loading services…
-              </td>
-            </tr>
+            <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600 text-sm">
+              <span className="inline-block w-4 h-4 border-2 border-gray-700 border-t-orange-500 rounded-full animate-spin mr-2" />Loading services…
+            </td></tr>
           ) : services.length === 0 ? (
-            <tr>
-              <td colSpan={5} className="px-4 py-8 text-center text-gray-600 text-sm">No service data available</td>
-            </tr>
+            <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600 text-sm">No service data</td></tr>
           ) : services.map(svc => (
             <tr key={svc.name} className="border-b border-[#252b3d] hover:bg-[#252b3d]/50 transition-colors">
               <td className="px-4 py-2.5 text-gray-300 font-medium">{svc.display}</td>
@@ -202,12 +194,12 @@ function ServiceTable({ services, loading, onAction }: {
                   {svc.status.charAt(0).toUpperCase() + svc.status.slice(1)}
                 </span>
               </td>
-              <td className="px-4 py-2.5 text-gray-500 text-xs hidden md:table-cell">{svc.pid ?? '—'}</td>
-              <td className="px-4 py-2.5 text-gray-500 text-xs hidden md:table-cell">{svc.uptime ?? '—'}</td>
+              <td className="px-4 py-2.5 text-gray-500 text-xs">{svc.pid ?? '—'}</td>
+              <td className="px-4 py-2.5 text-gray-500 text-xs">{svc.uptime ?? '—'}</td>
               <td className="px-4 py-2.5">
                 <div className="flex gap-1.5">
-                  <button onClick={() => onAction(svc.name, 'start')} className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:bg-emerald-500/20 hover:text-emerald-400 text-gray-400 transition-colors">Start</button>
-                  <button onClick={() => onAction(svc.name, 'stop')} className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:bg-red-500/20 hover:text-red-400 text-gray-400 transition-colors">Stop</button>
+                  <button onClick={() => onAction(svc.name, 'start')}   className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:bg-emerald-500/20 hover:text-emerald-400 text-gray-400 transition-colors">Start</button>
+                  <button onClick={() => onAction(svc.name, 'stop')}    className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:bg-red-500/20 hover:text-red-400 text-gray-400 transition-colors">Stop</button>
                   <button onClick={() => onAction(svc.name, 'restart')} className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:bg-orange-500/20 hover:text-orange-400 text-gray-400 transition-colors">Restart</button>
                 </div>
               </td>
@@ -219,7 +211,7 @@ function ServiceTable({ services, loading, onAction }: {
   )
 }
 
-/* ── Quick action grid ───────────────────────────────────────────────────── */
+/* ── Quick action grid ────────────────────────────────────────────────── */
 function QuickActions({ onNav }: { onNav: (p: Page) => void }) {
   const actions = [
     { label: 'Create Account', icon: '👤', page: 'createAccount' as Page, desc: 'Add hosting account' },
@@ -251,7 +243,7 @@ function QuickActions({ onNav }: { onNav: (p: Page) => void }) {
   )
 }
 
-/* ── Server info bar ─────────────────────────────────────────────────────── */
+/* ── Server info bar ──────────────────────────────────────────────────── */
 function ServerInfoBar({ data }: { data: DashboardData | null }) {
   const si = data?.sysinfo
   const v  = data?.versions
@@ -282,17 +274,14 @@ function ServerInfoBar({ data }: { data: DashboardData | null }) {
   )
 }
 
-/* ── Dashboard page ──────────────────────────────────────────────────────── */
+/* ── Dashboard ────────────────────────────────────────────────────────── */
 function Dashboard({ onNav }: { onNav: (p: Page) => void }) {
-  const [dashData, setDashData] = useState<DashboardData | null>(null)
-  const [services, setServices] = useState<ServiceInfo[]>([])
+  const [dashData, setDashData]   = useState<DashboardData | null>(null)
+  const [services, setServices]   = useState<ServiceInfo[]>([])
   const [svcLoading, setSvcLoading] = useState(true)
   const [actionMsg, setActionMsg] = useState('')
 
-  useEffect(() => {
-    api.getDashboard().then(setDashData).catch(console.error)
-  }, [])
-
+  useEffect(() => { api.getDashboard().then(setDashData).catch(console.error) }, [])
   useEffect(() => {
     api.getServices().then(s => { setServices(s); setSvcLoading(false) }).catch(() => setSvcLoading(false))
   }, [])
@@ -301,7 +290,6 @@ function Dashboard({ onNav }: { onNav: (p: Page) => void }) {
     setActionMsg(`${action}ing ${name}…`)
     try {
       await api.serviceAction(name, action)
-      // Refresh services
       const updated = await api.getServices()
       setServices(updated)
       setActionMsg(`${name} ${action}ed`)
@@ -317,16 +305,12 @@ function Dashboard({ onNav }: { onNav: (p: Page) => void }) {
         <div>
           <h1 className="text-lg font-black text-white">Server Overview</h1>
           <p className="text-xs text-gray-500 mt-0.5">
-            {dashData?.sysinfo
-              ? `${dashData.sysinfo.hostname} · ${dashData.sysinfo.ip}`
-              : 'Welcome back, admin — NixServer WHM'}
+            {dashData?.sysinfo ? `${dashData.sysinfo.hostname} · ${dashData.sysinfo.ip}` : 'Welcome back, admin — NixServer WHM'}
           </p>
         </div>
         <div className="flex items-center gap-3">
           {actionMsg && (
-            <span className="text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 rounded-full">
-              {actionMsg}
-            </span>
+            <span className="text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 rounded-full">{actionMsg}</span>
           )}
           <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -334,10 +318,8 @@ function Dashboard({ onNav }: { onNav: (p: Page) => void }) {
           </span>
         </div>
       </div>
-
       <StatBar data={dashData} />
       <ServerInfoBar data={dashData} />
-
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <ServiceTable services={services} loading={svcLoading} onAction={handleServiceAction} />
         <QuickActions onNav={onNav} />
@@ -346,30 +328,142 @@ function Dashboard({ onNav }: { onNav: (p: Page) => void }) {
   )
 }
 
-/* ── List accounts ───────────────────────────────────────────────────────── */
-function ListAccounts({ onNav }: { onNav: (p: Page) => void }) {
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+/* ── Service Manager (dedicated page) ────────────────────────────────── */
+function ServiceManager() {
+  const [services, setServices]   = useState<ServiceInfo[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [actionMsg, setActionMsg] = useState('')
 
-  useEffect(() => {
-    api.getAccounts()
-      .then(setAccounts)
-      .catch(console.error)
-      .finally(() => setLoading(false))
+  const refresh = useCallback(() => {
+    setLoading(true)
+    api.getServices().then(s => { setServices(s); setLoading(false) }).catch(() => setLoading(false))
   }, [])
 
-  const filtered = accounts.filter(a =>
-    a.username.includes(search) || a.domain.includes(search)
-  )
+  useEffect(() => { refresh() }, [refresh])
+
+  const handleAction = useCallback(async (name: string, action: 'start' | 'stop' | 'restart') => {
+    setActionMsg(`${action}ing ${name}…`)
+    try {
+      await api.serviceAction(name, action)
+      refresh()
+      setActionMsg(`${name} ${action}ed successfully`)
+    } catch (e: any) {
+      setActionMsg(`Error: ${e.message}`)
+    }
+    setTimeout(() => setActionMsg(''), 4000)
+  }, [refresh])
+
+  const running = services.filter(s => s.status === 'running').length
+  const stopped = services.filter(s => s.status !== 'running').length
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-black text-white">Service Manager</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Control all system services from one place</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {actionMsg && (
+            <span className="text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 rounded-lg">{actionMsg}</span>
+          )}
+          <button onClick={refresh} className="px-3 py-1.5 bg-[#1a1f2e] border border-[#2a3044] hover:border-orange-500/40 text-gray-400 hover:text-white text-xs rounded-lg transition-colors">
+            ↻ Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Summary pills */}
+      <div className="flex gap-3">
+        <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-xs text-emerald-400 font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          {running} running
+        </span>
+        {stopped > 0 && (
+          <span className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-full text-xs text-red-400 font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+            {stopped} stopped
+          </span>
+        )}
+      </div>
+
+      <ServiceTable services={services} loading={loading} onAction={handleAction} />
+    </div>
+  )
+}
+
+/* ── List accounts ────────────────────────────────────────────────────── */
+function ListAccounts({ onNav }: { onNav: (p: Page) => void }) {
+  const [accounts, setAccounts]   = useState<Account[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [search, setSearch]       = useState('')
+  const [actionMsg, setActionMsg] = useState('')
+  const [confirm, setConfirm]     = useState<{ action: string; username: string } | null>(null)
+
+  const refresh = useCallback(() => {
+    api.getAccounts().then(setAccounts).catch(console.error).finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { refresh() }, [refresh])
+
+  const filtered = accounts.filter(a =>
+    a.username.toLowerCase().includes(search.toLowerCase()) ||
+    a.domain.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const doAction = async (action: string, username: string) => {
+    setActionMsg(`${action}ing ${username}…`)
+    try {
+      if (action === 'suspend')   await api.suspendAccount(username)
+      if (action === 'unsuspend') await api.unsuspendAccount(username)
+      if (action === 'terminate') await api.terminateAccount(username)
+      setActionMsg(`${username} ${action}d`)
+      refresh()
+    } catch (e: any) {
+      setActionMsg(`Error: ${e.message}`)
+    }
+    setTimeout(() => setActionMsg(''), 4000)
+    setConfirm(null)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Confirm dialog */}
+      {confirm && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#1a1f2e] border border-[#2a3044] rounded-xl p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-base font-bold text-white mb-2">
+              {confirm.action === 'terminate' ? '⚠️ Terminate Account' : confirm.action === 'suspend' ? 'Suspend Account' : 'Unsuspend Account'}
+            </h3>
+            <p className="text-sm text-gray-400 mb-5">
+              {confirm.action === 'terminate'
+                ? <>This will permanently delete <span className="text-white font-semibold">{confirm.username}</span> and remove all vhost, DNS, and FPM config. This cannot be undone.</>
+                : confirm.action === 'suspend'
+                  ? <>Suspend hosting account <span className="text-white font-semibold">{confirm.username}</span>? Their site will go offline.</>
+                  : <>Restore access for <span className="text-white font-semibold">{confirm.username}</span>?</>
+              }
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button onClick={() => setConfirm(null)} className="px-4 py-2 rounded-lg border border-[#2a3044] text-gray-400 hover:text-white text-sm transition-colors">Cancel</button>
+              <button
+                onClick={() => doAction(confirm.action, confirm.username)}
+                className={`px-4 py-2 rounded-lg text-white text-sm font-semibold transition-colors ${confirm.action === 'terminate' ? 'bg-red-600 hover:bg-red-700' : confirm.action === 'suspend' ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
         <h1 className="text-lg font-black text-white">Hosting Accounts</h1>
-        <button onClick={() => onNav('createAccount')} className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded transition-colors">
-          + Create Account
-        </button>
+        <div className="flex items-center gap-3">
+          {actionMsg && <span className="text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 rounded-lg">{actionMsg}</span>}
+          <button onClick={() => onNav('createAccount')} className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded transition-colors">
+            + Create Account
+          </button>
+        </div>
       </div>
 
       <div className="bg-[#1a1f2e] border border-[#2a3044] rounded-lg p-3 flex gap-3">
@@ -386,7 +480,7 @@ function ListAccounts({ onNav }: { onNav: (p: Page) => void }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#2a3044] bg-[#0f1520]">
-              {['Username', 'Domain', 'Package', 'Disk Quota', 'Status', 'Created', 'Actions'].map(h => (
+              {['Username', 'Domain', 'Package', 'Disk', 'Status', 'Created', 'Actions'].map(h => (
                 <th key={h} className="text-left px-4 py-2.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
@@ -400,30 +494,35 @@ function ListAccounts({ onNav }: { onNav: (p: Page) => void }) {
               <tr><td colSpan={7} className="px-4 py-16 text-center">
                 <div className="text-3xl mb-3">👤</div>
                 <p className="text-gray-500 text-sm">
-                  {search ? 'No accounts match your search.' : <>No accounts yet. <button onClick={() => onNav('createAccount')} className="text-orange-400 hover:underline">Create your first account →</button></>}
+                  {search ? 'No accounts match your search.' : <><button onClick={() => onNav('createAccount')} className="text-orange-400 hover:underline">Create your first account →</button></>}
                 </p>
               </td></tr>
             ) : filtered.map(acc => (
               <tr key={acc.id} className="border-b border-[#252b3d] hover:bg-[#252b3d]/50 transition-colors">
                 <td className="px-4 py-2.5 text-gray-300 font-medium">{acc.username}</td>
-                <td className="px-4 py-2.5 text-gray-400">{acc.domain}</td>
+                <td className="px-4 py-2.5 text-gray-400 text-xs">
+                  <a href={`http://${acc.domain}`} target="_blank" rel="noopener" className="hover:text-blue-400 transition-colors">{acc.domain} ↗</a>
+                </td>
                 <td className="px-4 py-2.5 text-gray-500 text-xs">{acc.package_name}</td>
                 <td className="px-4 py-2.5 text-gray-500 text-xs">{acc.disk_quota_mb === 0 ? '∞' : `${acc.disk_quota_mb} MB`}</td>
                 <td className="px-4 py-2.5">
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${
-                    acc.status === 'active'
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-red-500/20 text-red-400'
+                    acc.status === 'active'    ? 'bg-emerald-500/20 text-emerald-400' :
+                    acc.status === 'suspended' ? 'bg-yellow-500/20 text-yellow-400'  :
+                                                  'bg-red-500/20 text-red-400'
                   }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${acc.status === 'active' ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${acc.status === 'active' ? 'bg-emerald-400' : acc.status === 'suspended' ? 'bg-yellow-400' : 'bg-red-400'}`} />
                     {acc.status.charAt(0).toUpperCase() + acc.status.slice(1)}
                   </span>
                 </td>
                 <td className="px-4 py-2.5 text-gray-600 text-xs">{new Date(acc.created_at).toLocaleDateString()}</td>
                 <td className="px-4 py-2.5">
                   <div className="flex gap-1.5">
-                    <button className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:text-orange-400 text-gray-400 transition-colors">Edit</button>
-                    <button className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:text-red-400 text-gray-400 transition-colors">Suspend</button>
+                    {acc.status === 'suspended'
+                      ? <button onClick={() => setConfirm({ action: 'unsuspend', username: acc.username })} className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:text-emerald-400 text-gray-400 transition-colors">Unsuspend</button>
+                      : <button onClick={() => setConfirm({ action: 'suspend',   username: acc.username })} className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:text-yellow-400 text-gray-400 transition-colors">Suspend</button>
+                    }
+                    <button onClick={() => setConfirm({ action: 'terminate', username: acc.username })} className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:text-red-400 text-gray-400 transition-colors">Terminate</button>
                   </div>
                 </td>
               </tr>
@@ -435,7 +534,7 @@ function ListAccounts({ onNav }: { onNav: (p: Page) => void }) {
   )
 }
 
-/* ── Reusable form field — defined at module level to avoid remount bug ───── */
+/* ── Reusable form field ──────────────────────────────────────────────── */
 function FormField({ label, type = 'text', placeholder = '', value, onChange }: {
   label: string; type?: string; placeholder?: string
   value: string; onChange: (v: string) => void
@@ -444,17 +543,14 @@ function FormField({ label, type = 'text', placeholder = '', value, onChange }: 
     <div>
       <label className="block text-xs font-semibold text-gray-400 mb-1.5">{label}</label>
       <input
-        type={type}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
+        type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
         className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500/60"
       />
     </div>
   )
 }
 
-/* ── Create account form ─────────────────────────────────────────────────── */
+/* ── Create account form ──────────────────────────────────────────────── */
 function CreateAccount({ onNav }: { onNav: (p: Page) => void }) {
   const [form, setForm] = useState({
     username: '', domain: '', email: '', password: '',
@@ -463,18 +559,13 @@ function CreateAccount({ onNav }: { onNav: (p: Page) => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState('')
   const [success, setSuccess] = useState('')
-
   const set = (k: string, v: string | number) => setForm(f => ({ ...f, [k]: v }))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true); setError(''); setSuccess('')
     try {
-      const acc = await api.createAccount({
-        ...form,
-        disk_quota_mb: Number(form.disk_quota_mb),
-        bandwidth_mb:  Number(form.bandwidth_mb),
-      })
+      const acc = await api.createAccount({ ...form, disk_quota_mb: Number(form.disk_quota_mb), bandwidth_mb: Number(form.bandwidth_mb) })
       setSuccess(`Account "${acc.username}" created for ${acc.domain}`)
       setTimeout(() => onNav('listAccounts'), 1500)
     } catch (e: any) {
@@ -487,16 +578,13 @@ function CreateAccount({ onNav }: { onNav: (p: Page) => void }) {
   return (
     <div className="max-w-2xl space-y-5">
       <h1 className="text-lg font-black text-white">Create Hosting Account</h1>
-
       {error   && <div className="px-4 py-3 bg-red-950/60 border border-red-800/50 rounded-lg text-red-400 text-sm">⚠️ {error}</div>}
       {success && <div className="px-4 py-3 bg-emerald-950/60 border border-emerald-800/50 rounded-lg text-emerald-400 text-sm">✓ {success}</div>}
-
       <form onSubmit={handleSubmit} className="bg-[#1a1f2e] border border-[#2a3044] rounded-lg divide-y divide-[#2a3044]">
         <div className="p-5 space-y-4">
           <h2 className="text-xs font-bold text-orange-400 uppercase tracking-widest">Domain Information</h2>
           <FormField label="Domain Name" value={form.domain} onChange={v => set('domain', v)} placeholder="example.com" />
         </div>
-
         <div className="p-5 space-y-4">
           <h2 className="text-xs font-bold text-orange-400 uppercase tracking-widest">Account Credentials</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -507,7 +595,6 @@ function CreateAccount({ onNav }: { onNav: (p: Page) => void }) {
             </div>
           </div>
         </div>
-
         <div className="p-5 space-y-4">
           <h2 className="text-xs font-bold text-orange-400 uppercase tracking-widest">Resource Limits</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -515,27 +602,21 @@ function CreateAccount({ onNav }: { onNav: (p: Page) => void }) {
               <label className="block text-xs font-semibold text-gray-400 mb-1.5">Package</label>
               <select value={form.package_name} onChange={e => set('package_name', e.target.value)}
                 className="w-full bg-[#0f1520] border border-[#2a3044] text-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60">
-                <option>Default</option>
-                <option>Starter</option>
-                <option>Professional</option>
-                <option>Enterprise</option>
+                <option>Default</option><option>Starter</option><option>Professional</option><option>Enterprise</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-1.5">Disk Quota (MB)</label>
               <input type="number" value={form.disk_quota_mb} onChange={e => set('disk_quota_mb', e.target.value)}
-                className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60"
-              />
+                className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60" />
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-400 mb-1.5">Bandwidth (MB/mo, 0=∞)</label>
               <input type="number" value={form.bandwidth_mb} onChange={e => set('bandwidth_mb', e.target.value)}
-                className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60"
-              />
+                className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60" />
             </div>
           </div>
         </div>
-
         <div className="p-5 flex gap-3">
           <button type="submit" disabled={loading}
             className="px-5 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white text-sm font-bold rounded transition-colors flex items-center gap-2">
@@ -552,7 +633,253 @@ function CreateAccount({ onNav }: { onNav: (p: Page) => void }) {
   )
 }
 
-/* ── Placeholder ─────────────────────────────────────────────────────────── */
+/* ── Zone Manager (list all zones) ───────────────────────────────────── */
+function ZoneManager({ onNav }: { onNav: (p: Page) => void; onSelectZone?: (z: string) => void }) {
+  const [zones, setZones]   = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch]   = useState('')
+
+  useEffect(() => {
+    api.listZones().then(setZones).catch(console.error).finally(() => setLoading(false))
+  }, [])
+
+  const filtered = zones.filter(z => z.toLowerCase().includes(search.toLowerCase()))
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-black text-white">Zone Manager</h1>
+          <p className="text-xs text-gray-500 mt-0.5">PowerDNS zones — click a domain to view DNS records</p>
+        </div>
+      </div>
+
+      <div className="bg-[#1a1f2e] border border-[#2a3044] rounded-lg p-3">
+        <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Filter domains…"
+          className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm placeholder-gray-600 focus:outline-none focus:border-orange-500/50" />
+      </div>
+
+      <div className="bg-[#1a1f2e] border border-[#2a3044] rounded-lg overflow-hidden">
+        {loading ? (
+          <div className="py-12 text-center text-gray-600 text-sm">
+            <span className="inline-block w-4 h-4 border-2 border-gray-700 border-t-orange-500 rounded-full animate-spin mr-2" />Loading zones…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-16 text-center">
+            <div className="text-4xl mb-3">🌐</div>
+            <p className="text-gray-500 text-sm">
+              {search ? 'No zones match your search.' : 'No DNS zones found. Create an account to generate a zone.'}
+            </p>
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#2a3044] bg-[#0f1520]">
+                {['Domain', 'Type', 'Actions'].map(h => (
+                  <th key={h} className="text-left px-4 py-2.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(zone => (
+                <tr key={zone} className="border-b border-[#252b3d] hover:bg-[#252b3d]/50 transition-colors">
+                  <td className="px-4 py-3 text-gray-300 font-medium">
+                    <div className="flex items-center gap-2">
+                      <span className="text-blue-400 text-xs">🌐</span>
+                      {zone}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-block px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] rounded font-semibold">Native</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('nixpanel_dns_zone', zone)
+                        onNav('dns')
+                      }}
+                      className="px-3 py-1 rounded text-xs bg-[#2a3044] hover:bg-blue-500/20 hover:text-blue-400 text-gray-400 transition-colors"
+                    >
+                      Edit Records →
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── DNS Records editor ───────────────────────────────────────────────── */
+const RTYPE_OPTIONS = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA']
+
+function DnsRecords({ onNav }: { onNav: (p: Page) => void }) {
+  const [zone, setZone]           = useState(localStorage.getItem('nixpanel_dns_zone') ?? '')
+  const [zones, setZones]         = useState<string[]>([])
+  const [records, setRecords]     = useState<DnsRecord[]>([])
+  const [loading, setLoading]     = useState(false)
+  const [msg, setMsg]             = useState('')
+  const [showAdd, setShowAdd]     = useState(false)
+  const [newRec, setNewRec]       = useState({ name: '@', rtype: 'A', ttl: 3600, content: '' })
+
+  useEffect(() => {
+    api.listZones().then(zs => { setZones(zs); if (!zone && zs[0]) setZone(zs[0]) }).catch(console.error)
+  }, [])
+
+  useEffect(() => {
+    if (!zone) return
+    setLoading(true)
+    api.listZoneRecords(zone).then(setRecords).catch(console.error).finally(() => setLoading(false))
+  }, [zone])
+
+  const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 4000) }
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await api.addDnsRecord(zone, newRec)
+      flash(`Added ${newRec.rtype} record`)
+      setShowAdd(false)
+      setNewRec({ name: '@', rtype: 'A', ttl: 3600, content: '' })
+      const updated = await api.listZoneRecords(zone)
+      setRecords(updated)
+    } catch (e: any) {
+      flash(`Error: ${e.message}`)
+    }
+  }
+
+  const handleDelete = async (rec: DnsRecord) => {
+    if (!confirm(`Delete ${rec.rtype} record for "${rec.name}"?`)) return
+    try {
+      await api.deleteDnsRecord(zone, rec.name, rec.rtype)
+      flash(`Deleted ${rec.rtype} record`)
+      const updated = await api.listZoneRecords(zone)
+      setRecords(updated)
+    } catch (e: any) {
+      flash(`Error: ${e.message}`)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-black text-white">DNS Records</h1>
+          <p className="text-xs text-gray-500 mt-0.5">
+            <button onClick={() => onNav('domains')} className="hover:text-orange-400 transition-colors">Zone Manager</button>
+            {zone && <> / <span className="text-gray-400">{zone}</span></>}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {msg && <span className="text-xs text-orange-400 bg-orange-500/10 border border-orange-500/20 px-3 py-1.5 rounded-lg">{msg}</span>}
+          <button onClick={() => setShowAdd(!showAdd)}
+            className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded transition-colors">
+            + Add Record
+          </button>
+        </div>
+      </div>
+
+      {/* Zone selector */}
+      {zones.length > 1 && (
+        <div className="bg-[#1a1f2e] border border-[#2a3044] rounded-lg p-3">
+          <select value={zone} onChange={e => setZone(e.target.value)}
+            className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/50">
+            {zones.map(z => <option key={z} value={z}>{z}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* Add record form */}
+      {showAdd && (
+        <form onSubmit={handleAdd} className="bg-[#1a1f2e] border border-orange-500/30 rounded-lg p-5 space-y-4">
+          <h3 className="text-sm font-bold text-orange-400">Add DNS Record</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Name</label>
+              <input value={newRec.name} onChange={e => setNewRec(r => ({ ...r, name: e.target.value }))}
+                placeholder="@ or subdomain"
+                className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Type</label>
+              <select value={newRec.rtype} onChange={e => setNewRec(r => ({ ...r, rtype: e.target.value }))}
+                className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60">
+                {RTYPE_OPTIONS.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">TTL</label>
+              <input type="number" value={newRec.ttl} onChange={e => setNewRec(r => ({ ...r, ttl: Number(e.target.value) }))}
+                className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Content</label>
+              <input value={newRec.content} onChange={e => setNewRec(r => ({ ...r, content: e.target.value }))}
+                placeholder="1.2.3.4 or hostname"
+                className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded px-3 py-2 text-sm focus:outline-none focus:border-orange-500/60" />
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button type="submit" className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded transition-colors">Add Record</button>
+            <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 border border-[#2a3044] text-gray-400 hover:text-white text-sm rounded transition-colors">Cancel</button>
+          </div>
+        </form>
+      )}
+
+      {/* Records table */}
+      <div className="bg-[#1a1f2e] border border-[#2a3044] rounded-lg overflow-hidden">
+        {!zone ? (
+          <div className="py-16 text-center text-gray-600 text-sm">
+            Select a zone above or <button onClick={() => onNav('domains')} className="text-orange-400 hover:underline">go to Zone Manager</button>.
+          </div>
+        ) : loading ? (
+          <div className="py-12 text-center text-gray-600 text-sm">
+            <span className="inline-block w-4 h-4 border-2 border-gray-700 border-t-orange-500 rounded-full animate-spin mr-2" />Loading records for {zone}…
+          </div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#2a3044] bg-[#0f1520]">
+                {['Name', 'Type', 'TTL', 'Content', 'Actions'].map(h => (
+                  <th key={h} className="text-left px-4 py-2.5 text-[10px] font-bold text-gray-500 uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {records.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-12 text-center text-gray-600 text-sm">No records found for {zone}</td></tr>
+              ) : records.map((rec, i) => (
+                <tr key={i} className="border-b border-[#252b3d] hover:bg-[#252b3d]/50 transition-colors">
+                  <td className="px-4 py-2.5 text-gray-300 font-medium font-mono text-xs">{rec.name}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
+                      rec.rtype === 'A'     ? 'bg-blue-500/20 text-blue-400' :
+                      rec.rtype === 'MX'    ? 'bg-purple-500/20 text-purple-400' :
+                      rec.rtype === 'TXT'   ? 'bg-yellow-500/20 text-yellow-400' :
+                      rec.rtype === 'CNAME' ? 'bg-cyan-500/20 text-cyan-400' :
+                                              'bg-gray-500/20 text-gray-400'
+                    }`}>{rec.rtype}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-gray-500 text-xs">{rec.ttl}s</td>
+                  <td className="px-4 py-2.5 text-gray-400 text-xs font-mono max-w-xs truncate">{rec.content}</td>
+                  <td className="px-4 py-2.5">
+                    <button onClick={() => handleDelete(rec)} className="px-2 py-0.5 rounded text-[11px] bg-[#2a3044] hover:text-red-400 text-gray-400 transition-colors">Delete</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── Placeholder ──────────────────────────────────────────────────────── */
 function Placeholder({ title, icon }: { title: string; icon: string }) {
   return (
     <div className="flex flex-col items-center justify-center h-72 text-center">
@@ -584,9 +911,9 @@ const PAGE_META: Record<Page, { title: string; icon: string }> = {
   logs:          { title: 'System Logs',        icon: '📜' },
 }
 
-/* ── Admin panel shell ───────────────────────────────────────────────────── */
+/* ── Admin panel shell ────────────────────────────────────────────────── */
 function AdminPanel({ username, onLogout }: { username: string; onLogout: () => void }) {
-  const [page, setPage] = useState<Page>('dashboard')
+  const [page, setPage]         = useState<Page>('dashboard')
   const [collapsed, setCollapsed] = useState(false)
   const meta = PAGE_META[page]
 
@@ -595,6 +922,9 @@ function AdminPanel({ username, onLogout }: { username: string; onLogout: () => 
       case 'dashboard':     return <Dashboard onNav={setPage} />
       case 'listAccounts':  return <ListAccounts onNav={setPage} />
       case 'createAccount': return <CreateAccount onNav={setPage} />
+      case 'domains':       return <ZoneManager onNav={setPage} />
+      case 'dns':           return <DnsRecords onNav={setPage} />
+      case 'services':      return <ServiceManager />
       default:              return <Placeholder title={meta.title} icon={meta.icon} />
     }
   }
@@ -602,7 +932,6 @@ function AdminPanel({ username, onLogout }: { username: string; onLogout: () => 
   return (
     <div className="flex min-h-screen bg-[#0f1520] text-white">
       <Sidebar current={page} onNav={setPage} onLogout={onLogout} collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} username={username} />
-
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-14 border-b border-[#2a3044] bg-[#1a1f2e] flex items-center px-6 justify-between gap-4 flex-shrink-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -619,7 +948,6 @@ function AdminPanel({ username, onLogout }: { username: string; onLogout: () => 
             </div>
           </div>
         </header>
-
         {page !== 'dashboard' && (
           <div className="px-6 py-2 border-b border-[#2a3044] bg-[#0f1520] flex items-center gap-1.5 text-xs text-gray-600">
             <button onClick={() => setPage('dashboard')} className="hover:text-orange-400 transition-colors">Dashboard</button>
@@ -627,11 +955,9 @@ function AdminPanel({ username, onLogout }: { username: string; onLogout: () => 
             <span className="text-gray-400">{meta.title}</span>
           </div>
         )}
-
         <main className="flex-1 p-6 overflow-auto">{renderPage()}</main>
-
         <footer className="border-t border-[#2a3044] px-6 py-2 flex items-center justify-between text-[10px] text-gray-700">
-          <span>NixPanel WHM v0.2.0-alpha · Ubuntu 24.04 LTS</span>
+          <span>NixPanel WHM v0.3.0-alpha · Ubuntu 24.04 LTS</span>
           <span>© 2025 NixPanel</span>
         </footer>
       </div>
@@ -639,15 +965,14 @@ function AdminPanel({ username, onLogout }: { username: string; onLogout: () => 
   )
 }
 
-/* ── Login ───────────────────────────────────────────────────────────────── */
+/* ── Login ────────────────────────────────────────────────────────────── */
 export default function App() {
-  const [username, setUsername]   = useState('')
-  const [password, setPassword]   = useState('')
+  const [username, setUsername]     = useState('')
+  const [password, setPassword]     = useState('')
   const [loggedInAs, setLoggedInAs] = useState<string | null>(null)
-  const [error, setError]         = useState('')
-  const [loading, setLoading]     = useState(false)
+  const [error, setError]           = useState('')
+  const [loading, setLoading]       = useState(false)
 
-  // Restore session from localStorage
   useEffect(() => {
     if (api.isLoggedIn()) {
       const stored = localStorage.getItem('nixpanel_username')
@@ -708,7 +1033,7 @@ export default function App() {
             ))}
           </div>
         </div>
-        <p className="text-[10px] text-gray-700">NixPanel WHM v0.2.0-alpha · Secured by Fail2ban</p>
+        <p className="text-[10px] text-gray-700">NixPanel WHM v0.3.0-alpha · Secured by Fail2ban</p>
       </div>
 
       {/* Login form */}
@@ -718,13 +1043,11 @@ export default function App() {
             <span className="text-3xl font-black text-white">Nix<span className="text-orange-400">Server</span></span>
             <p className="text-xs text-gray-600 mt-1">WHM Control Panel</p>
           </div>
-
           <div className="bg-[#1a1f2e] border border-[#2a3044] rounded-xl shadow-2xl overflow-hidden">
             <div className="bg-orange-500 px-6 py-4">
               <h1 className="text-white font-bold text-base">Administrator Login</h1>
               <p className="text-orange-200 text-xs mt-0.5">NixServer WHM · Root Access</p>
             </div>
-
             <form onSubmit={handleLogin} className="p-6 space-y-4">
               {error && (
                 <div className="px-4 py-3 bg-red-950/60 border border-red-800/50 rounded-lg text-red-400 text-sm flex items-center gap-2">
@@ -734,26 +1057,21 @@ export default function App() {
               <div>
                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Username</label>
                 <input type="text" value={username} onChange={e => setUsername(e.target.value)} required autoFocus autoComplete="username" placeholder="admin"
-                  className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded-lg px-4 py-2.5 text-sm placeholder-gray-700 focus:outline-none focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/20 transition-all"
-                />
+                  className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded-lg px-4 py-2.5 text-sm placeholder-gray-700 focus:outline-none focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/20 transition-all" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Password</label>
                 <input type="password" value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password" placeholder="••••••••••••"
-                  className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded-lg px-4 py-2.5 text-sm placeholder-gray-700 focus:outline-none focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/20 transition-all"
-                />
+                  className="w-full bg-[#0f1520] border border-[#2a3044] text-white rounded-lg px-4 py-2.5 text-sm placeholder-gray-700 focus:outline-none focus:border-orange-500/60 focus:ring-1 focus:ring-orange-500/20 transition-all" />
               </div>
               <button type="submit" disabled={loading}
                 className="w-full py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 active:bg-orange-700 disabled:opacity-60 text-white font-bold text-sm transition-all shadow-lg shadow-orange-900/40 flex items-center justify-center gap-2">
-                {loading ? (
-                  <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Authenticating…</>
-                ) : 'Sign in to WHM'}
+                {loading ? (<><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Authenticating…</>) : 'Sign in to WHM'}
               </button>
             </form>
-
             <div className="border-t border-[#2a3044] px-6 py-3 bg-[#0f1520] flex items-center justify-between text-[10px] text-gray-700">
               <span>Secured by Fail2ban</span>
-              <span>NixPanel v0.2.0-alpha</span>
+              <span>NixPanel v0.3.0-alpha</span>
             </div>
           </div>
         </div>

@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::net::SocketAddr;
 
 use axum::{
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use tower_http::cors::{Any, CorsLayer};
@@ -110,11 +110,32 @@ fn build_router(state: AppState) -> Router {
         // Dashboard
         .route("/api/dashboard", get(routes::dashboard::get_dashboard))
         // Services
-        .route("/api/services",                 get(routes::services::list_services))
-        .route("/api/services/:name/:action",  post(routes::services::service_action))
-        // Accounts
-        .route("/api/accounts", get(routes::accounts::list_accounts)
-                                    .post(routes::accounts::create_account))
+        .route("/api/services",                get(routes::services::list_services))
+        .route("/api/services/:name/:action", post(routes::services::service_action))
+        // Accounts — list / create
+        .route("/api/accounts",
+               get(routes::accounts::list_accounts)
+               .post(routes::accounts::create_account))
+        // Accounts — per-account actions
+        .route("/api/accounts/:username",
+               get(routes::accounts::get_account)
+               .delete(routes::accounts::terminate_account))
+        .route("/api/accounts/:username/suspend",
+               post(routes::accounts::suspend_account))
+        .route("/api/accounts/:username/unsuspend",
+               post(routes::accounts::unsuspend_account))
+        // DNS
+        .route("/api/dns",                    get(routes::dns::list_zones))
+        .route("/api/dns/:domain",
+               get(routes::dns::list_zone_records)
+               .post(routes::dns::add_record)
+               .delete(routes::dns::delete_record))
+        // Email accounts
+        .route("/api/email",                  post(routes::email::create_email_account))
+        .route("/api/email/:username",        get(routes::email::list_email_accounts))
+        .route("/api/email/id/:id",           delete(routes::email::delete_email_account))
+        // Profile / password
+        .route("/api/me/password",            post(routes::me::change_password))
         .with_state(state)
         .layer(cors)
 }

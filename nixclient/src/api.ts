@@ -37,6 +37,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   return res.json()
 }
 
+/* ── Auth ────────────────────────────────────────────────────────────── */
 export interface LoginResult {
   token: string
   user: { id: number; username: string; role: string }
@@ -50,7 +51,9 @@ export async function login(username: string, password: string): Promise<LoginRe
   return result
 }
 
+/* ── Account info ────────────────────────────────────────────────────── */
 export interface AccountInfo {
+  id: number
   username: string
   domain: string
   email: string
@@ -58,13 +61,49 @@ export interface AccountInfo {
   disk_quota_mb: number
   bandwidth_mb: number
   status: string
+  created_at: string
 }
-export async function getMyAccount(): Promise<AccountInfo | null> {
+export async function getMyAccount(username: string): Promise<AccountInfo | null> {
   try {
-    // Returns the first account matching the logged-in user's username
-    const accounts = await apiFetch<AccountInfo[]>('/accounts')
-    return accounts[0] ?? null
+    return await apiFetch<AccountInfo>(`/accounts/${username}`)
   } catch {
     return null
   }
+}
+
+/* ── Email accounts ──────────────────────────────────────────────────── */
+export interface EmailAccount {
+  id: number
+  account_id: number
+  address: string
+  quota_mb: number
+  created_at: string
+}
+export async function listMyEmailAccounts(username: string): Promise<EmailAccount[]> {
+  return apiFetch(`/email/${username}`)
+}
+export async function createEmailAccount(data: {
+  username: string
+  domain: string
+  password: string
+  quota_mb?: number
+}): Promise<EmailAccount> {
+  return apiFetch('/email', { method: 'POST', body: JSON.stringify(data) })
+}
+export async function deleteEmailAccount(id: number): Promise<void> {
+  await apiFetch(`/email/id/${id}`, { method: 'DELETE' })
+}
+
+/* ── Password change ─────────────────────────────────────────────────── */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  await apiFetch('/me/password', {
+    method: 'POST',
+    body: JSON.stringify({
+      current_password: currentPassword,
+      new_password: newPassword,
+    }),
+  })
 }

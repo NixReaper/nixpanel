@@ -8,28 +8,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Added
-- `nixpanel-accounts` section binary — full account provisioner
-  - Creates Apache vhost with PHP-FPM proxy
-  - Creates PHP-FPM pool (per-user socket, open_basedir isolation)
-  - Creates PowerDNS zone with A, www, mail, ftp, MX, SPF records
-  - Builds home directory structure: `public_html/`, `logs/`, `tmp/`, `mail/`, `backups/`
-  - Writes default `index.html` for new domains
-  - Sets correct ownership and permissions
-  - `deprovision` action removes vhost, FPM pool, DNS zone
-- NixClient real JWT authentication — login now calls `/api/auth/login`
-  - Session persists across refresh via `localStorage`
-  - Admin accounts redirected to NixServer (port 2087) instead of being allowed in
-
-### Fixed
-- NixClient login accepted any username/password (was using fake `setTimeout` bypass)
-- NixClient Sign out button now clears JWT and session correctly
-- `CreateAccount` `FormField` component moved to module level — fixes focus jumping to next field after one keystroke (React remount bug from component defined inside render function)
-- `BIGINT UNSIGNED` columns changed to `BIGINT` in DB schema — fixes `i64` type mismatch error on login
-
 ### Planned
-- DNS zone editor (CRUD records via PowerDNS API)
-- Email account management (Dovecot mailbox provisioning)
 - SSL certificate management (Let's Encrypt via Certbot)
 - File manager
 - MySQL/MariaDB database manager (per-account)
@@ -37,7 +16,40 @@ Versions follow [Semantic Versioning](https://semver.org/).
 - Backup / restore system
 - Firewall rule editor (CSF/iptables)
 - Multi-server support (Agency plan)
-- NixClient pages: domains, email, databases, FTP, security, stats
+- NixClient pages: databases, FTP, subdomains, redirects, PHP version selector, stats
+
+---
+
+## [0.3.0-alpha] — 2026-04-25
+
+### Added
+- **DNS Management** — full CRUD via pdnsutil
+  - `GET  /api/dns`             — list all PowerDNS zones
+  - `GET  /api/dns/:domain`     — list records (A, AAAA, MX, TXT, CNAME, NS, SRV, CAA)
+  - `POST /api/dns/:domain`     — add record (name, type, TTL, content)
+  - `DELETE /api/dns/:domain`   — delete an RRset (name + type)
+  - SOA records hidden; zone auto-rectified after each change
+- **NixServer — Zone Manager page** (`domains`): lists all PowerDNS zones, click → DNS editor
+- **NixServer — DNS Records page** (`dns`): record table with inline add/delete, zone switcher dropdown, colour-coded type badges
+- **NixServer — Service Manager page** (`services`): dedicated page with refresh button and running/stopped summary pills
+- **NixServer — Account actions**: Suspend / Unsuspend / Terminate buttons with confirmation modal
+  - `POST /api/accounts/:username/suspend` / `unsuspend`
+  - `DELETE /api/accounts/:username` — deprovisions vhost, FPM, DNS; removes system user; cascades DB records
+- **Email account management**
+  - `GET  /api/email/:username`  — list email accounts for a hosting account
+  - `POST /api/email`            — create mailbox (Maildir provisioned under `~/mail/`)
+  - `DELETE /api/email/id/:id`   — delete email account
+- **NixClient — Email Accounts page** — create, list, delete mailboxes with quota display
+- **NixClient — Domains page** — shows primary domain, document root, quota, bandwidth
+- **NixClient — Change Password page** — verifies current password, hashes and updates both `users` and `accounts` tables
+- **NixClient — AccountSidebar** now fetches real account data (domain, package, quota) from `GET /api/accounts/:username`
+- **Password change API** — `POST /api/me/password` (verifies old password via Argon2id, updates `users` + `accounts`)
+- **Single account lookup** — `GET /api/accounts/:username`
+
+### Changed
+- NixServer footer / login version bump: `v0.2.0-alpha` → `v0.3.0-alpha`
+- NixClient footer / login version bump: `v0.2.0-alpha` → `v0.3.0-alpha`
+- List Accounts: domain cell links to site, suspend/terminate replace placeholder Edit button
 
 ---
 
@@ -118,6 +130,7 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ---
 
-[Unreleased]: https://github.com/NixReaper/nixpanel/compare/v0.2.0-alpha...HEAD
+[Unreleased]: https://github.com/NixReaper/nixpanel/compare/v0.3.0-alpha...HEAD
+[0.3.0-alpha]: https://github.com/NixReaper/nixpanel/compare/v0.2.0-alpha...v0.3.0-alpha
 [0.2.0-alpha]: https://github.com/NixReaper/nixpanel/compare/v0.1.0-alpha...v0.2.0-alpha
 [0.1.0-alpha]: https://github.com/NixReaper/nixpanel/releases/tag/v0.1.0-alpha

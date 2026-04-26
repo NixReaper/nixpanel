@@ -1,4 +1,7 @@
-use axum::{extract::State, Json};
+use axum::{
+    extract::{Path, State},
+    Json,
+};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
@@ -130,6 +133,120 @@ pub async fn create_account(
     .bind(insert_id)
     .fetch_one(&state.db)
     .await?;
+
+    Ok(Json(account))
+}
+
+/* ── Suspend / Unsuspend ─────────────────────────────────────────────── */
+
+pub async fn suspend_account(
+    _claims: Claims,
+    State(state): State<AppState>,
+    Path(username): Path<String>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let rows = sqlx::query(
+        "UPDATE accounts SET status = 'suspended' WHERE username = ?",
+    )
+    .bind(&username)
+    .execute(&state.db)
+    .await?
+    .rows_affected();
+
+    if rows == 0 {
+        return Err(AppError::NotFound);
+    }
+    Ok(Json(serde_json::json!({ "ok": true, "status": "suspended" })))
+}
+
+pub async fn unsuspend_account(
+    _claims: Claims,
+    State(state): State<AppState>,
+    Path(username): Path<String>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    let rows = sqlx::query(
+        "UPDATE accounts SET status = 'active' WHERE username = ?",
+    )
+    .bind(&username)
+    .execute(&state.db)
+    .await?
+    .rows_affected();
+
+    if rows == 0 {
+        return Err(AppError::NotFound);
+    }
+    Ok(Json(serde_json::json!({ "ok": true, "status": "active" })))
+}
+
+/* ── Terminate (delete + deprovision) ────────────────────────────────── */
+
+pub async fn terminate_account(
+    _claims: Claims,
+    State(state): State<AppState>,
+    Path(username): Path<String>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    // Fetch domain so we can deprovision DNS
+    let domain: Option<String> = sqlx::query_scalar(
+        "SELECT domain FROM accounts WHERE username = ?",
+    )
+    .bind(&username)
+    .fetch_optional(&state.db)
+    .await?;
+
+    if domain.is_none() {
+        return Err(AppError::NotFound);
+    }
+    let domain = domain.unwrap();
+
+    // Run nixpanel-accounts deprovision (best effort)
+    let result = crate::section::call(
+        &state.config.bin_dir,
+        "nixpanel-accounts",
+        "deprovision",
+        serde_json::json!({ "username": username, "domain": domain }),
+    );
+    if let Err(ref e) = result {
+        tracing::warn!("Deprovision error for {}: {}", username, e);
+    }
+
+    // Remove system user (keep home dir for safety — admin can wipe manually)
+    let _ = std::process::Command::new("userdel")
+        .arg(&username)
+        .output();
+
+    // Remove DB records (cascades to email, ftp, db, ssl, etc.)
+    sqlx::query("DELETE FROM accounts WHERE username = ?")
+        .bind(&username)
+        .execute(&state.db)
+        .await?;
+
+    // Also remove panel login user
+    sqlx::query("DELETE FROM users WHERE username = ? AND role = 'user'")
+        .bind(&username)
+        .execute(&state.db)
+        .await
+        .ok();
+
+    Ok(Json(serde_json::json!({
+        "ok": true,
+        "message": format!("Account {} terminated", username)
+    })))
+}
+
+/* ── Single account lookup ───────────────────────────────────────────── */
+
+pub async fn get_account(
+    _claims: Claims,
+    State(state): State<AppState>,
+    Path(username): Path<String>,
+) -> Result<Json<Account>, AppError> {
+    let account = sqlx::query_as::<_, Account>(
+        "SELECT id, username, domain, email, package_name, disk_quota_mb, bandwidth_mb, status, created_at
+         FROM accounts WHERE username = ?",
+    )
+    .bind(&username)
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(AppError::NotFound)?;
 
     Ok(Json(account))
 }
