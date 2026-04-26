@@ -11,8 +11,8 @@ pub struct Account {
     pub domain:        String,
     pub email:         String,
     pub package_name:  String,
-    pub disk_quota_mb: i64,
-    pub bandwidth_mb:  i64,
+    pub disk_quota_mb: i32,  // INT column → i32
+    pub bandwidth_mb:  i32,  // INT column → i32
     pub status:        String,
     pub created_at:    NaiveDateTime,
 }
@@ -24,8 +24,8 @@ pub struct CreateAccountRequest {
     pub email:         String,
     pub password:      String,
     pub package_name:  Option<String>,
-    pub disk_quota_mb: Option<i64>,
-    pub bandwidth_mb:  Option<i64>,
+    pub disk_quota_mb: Option<i32>,
+    pub bandwidth_mb:  Option<i32>,
 }
 
 pub async fn list_accounts(
@@ -71,8 +71,8 @@ pub async fn create_account(
     let _ = std::fs::create_dir_all(format!("/home/{}/public_html", body.username));
 
     let package_name  = body.package_name.unwrap_or_else(|| "Default".into());
-    let disk_quota_mb = body.disk_quota_mb.unwrap_or(10240);
-    let bandwidth_mb  = body.bandwidth_mb.unwrap_or(0);
+    let disk_quota_mb: i32 = body.disk_quota_mb.unwrap_or(10240);
+    let bandwidth_mb:  i32 = body.bandwidth_mb.unwrap_or(0);
 
     let insert_id: u64 = sqlx::query(
         "INSERT INTO accounts (username, domain, email, password_hash, package_name, disk_quota_mb, bandwidth_mb, status)
